@@ -1,0 +1,112 @@
+{
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/.git": true,
+        "**/.vs": true,
+        "**/.gitmodules": true,
+        "**/.vsconfig": true,
+        "**/*.booproj": true,
+        "**/*.pidb": true,
+        "**/*.suo": true,
+        "**/*.user": true,
+        "**/*.userprefs": true,
+        "**/*.unityproj": true,
+        "**/*.dll": true,
+        "**/*.exe": true,
+        "**/*.pdf": true,
+        "**/*.mid": true,
+        "**/*.midi": true,
+        "**/*.wav": true,
+        "**/*.gif": true,
+        "**/*.ico": true,
+        "**/*.jpg": true,
+        "**/*.jpeg": true,
+        "**/*.png": true,
+        "**/*.psd": true,
+        "**/*.tga": true,
+        "**/*.tif": true,
+        "**/*.tiff": true,
+        "**/*.3ds": true,
+        "**/*.3DS": true,
+        "**/*.fbx": true,
+        "**/*.FBX": true,
+        "**/*.lxo": true,
+        "**/*.LXO": true,
+        "**/*.ma": true,
+        "**/*.MA": true,
+        "**/*.obj": true,
+        "**/*.OBJ": true,
+        "**/*.asset": true,
+        "**/*.cubemap": true,
+        "**/*.flare": true,
+        "**/*.mat": true,
+        "**/*.meta": true,
+        "**/*.prefab": true,
+        "**/*.unity": true,
+        "build/": true,
+        "Build/": true,
+        "Library/": true,
+        "library/": true,
+        "obj/": true,
+        "Obj/": true,
+        "Logs/": true,
+        "logs/": true,
+        "ProjectSettings/": true,
+        "UserSettings/": true,
+        "temp/": true,
+        "Temp/": true
+    },
+    "dotnet.defaultSolution": "Client.sln",
+    "cSpell.enabled": false,
+    "editor.quickSuggestions": {
+        "other": false,
+        "comments": false,
+        "strings": false
+    },
+    "editor.suggest.showWords": false,
+    "editor.wordBasedSuggestions": "off",
+    "editor.acceptSuggestionOnEnter": "off",
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "e:\\WorkSpaceE\\GI_Working\\DayDream\\Branches\\SBT\\Client\\Client.sln"
+    ],
+    "editor.wordWrap": "on",
+    "editor.wordWrapColumn": 120,
+    "editor.rulers": [120],
+    // 窗口大小设置 
+    "window.zoomLevel": 0.2,
+    // 终端字体大小
+    "terminal.integrated.fontSize": 12,
+    // 树形结构缩进
+    "workbench.tree.indent": 12,
+    // 字体大小设置 
+    "editor.fontSize": 14,
+    // 标签页相关设置
+    "workbench.editor.tabSizing": "shrink",
+    // "workbench.editor.tabSizeMode": "normal",
+    // // 自定义标签页字体大小 - 需要使用Apc Customize UI++插件
+    // "apc.stylesheet": {
+    //     // 标签页字体和尺寸设置
+    //     ".monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container .tab": {
+    //         "font-size": "12px !important",
+    //         "height": "12px !important",
+    //         "line-height": "12px !important"
+    //     },
+    //     // 标签页标题文字设置
+    //     ".monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container .tab .tab-label": {
+    //         "font-size": "12px !important",
+    //         "font-weight": "normal !important"
+    //     },
+    //     // 标签页宽度设置
+    //     ".monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container .tab.sizing-fixed": {
+    //         "width": "120px !important",
+    //         "min-width": "120px !important"
+    //     }
+    // },
+    // 标签页设置
+    "workbench.editor.wrapTabs": true,
+    "workbench.editor.scrollToSwitchTabs": false,
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.value": 10,
+    "workbench.editor.limit.perEditorGroup": true,
+    "workbench.editor.showTabs": "multiple",
+}

@@ -1,0 +1,6 @@
+---
+description: Update the diary file after each code change
+globs: 
+alwaysApply: false
+---
+Update the .cursor/myfiles/diary/debug.md file after each code update you make with what you've tried, what you've learned, and what you will do next.
