@@ -123,12 +123,6 @@ FLUSH PRIVILEGES;
 3. **娱乐性质**: 预测功能仅供娱乐参考
 4. **随机性提醒**: 彩票开奖完全随机，历史数据无法预测未来
 
-## 📞 联系方式
-
-- **开发者**: BaiFan
-- **邮箱**: fan.bai@garena.com
-- **项目地址**: [GitHub Repository URL]
-
 ---
 
 **🌈 让数据分析变得有趣！Happy Coding! 🚀** 
