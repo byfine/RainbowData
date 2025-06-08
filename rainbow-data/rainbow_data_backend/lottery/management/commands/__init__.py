@@ -1,0 +1,1 @@
+# Django管理命令commands目录初始化文件 

@@ -29,10 +29,12 @@
 ### 2.1 核心功能模块
 
 #### 2.1.1 数据管理模块
-- **历史数据导入**：支持批量导入双色球历史开奖数据
-- **数据实时同步**：定时爬取最新开奖结果
-- **数据验证**：确保数据完整性和准确性
-- **数据备份**：定期备份历史数据
+- **历史数据导入**：支持批量导入双色球历史开奖数据（CSV/JSON格式）
+- **网络数据爬取**：自动爬取福彩官网、500彩票网等数据源的历史和最新开奖数据
+- **数据实时同步**：定时爬取最新开奖结果，支持增量更新和自动去重
+- **数据验证**：确保数据完整性和准确性，包含爬取数据的格式验证和清洗
+- **数据备份**：定期备份历史数据，支持多数据源的数据整合和冲突处理
+- **爬虫管理**：爬虫任务调度、状态监控、日志记录和错误处理
 
 #### 2.1.2 数据分析模块
 - **基础统计分析**：
@@ -76,19 +78,29 @@
 - **后台管理界面**：数据管理、用户管理、系统配置
 - **日志管理**：操作日志、错误日志、访问日志
 - **系统监控**：性能监控、数据库监控、API监控
+- **爬虫管理界面**：爬虫任务控制、执行状态查看、数据源配置
 
 #### 2.2.2 API服务
 - **RESTful API**：提供数据查询和预测服务
 - **API文档**：完整的API使用说明
 - **API限流**：防止恶意请求和过度使用
+- **爬虫控制API**：爬虫任务启动/停止、状态查询、日志获取
+
+#### 2.2.3 自动化任务模块
+- **定时任务调度**：基于Celery的异步任务队列系统
+- **爬虫任务管理**：支持多数据源并行爬取和任务优先级管理
+- **数据同步任务**：定时触发数据获取、清洗、验证和存储流程
+- **任务监控告警**：任务执行状态监控、异常告警和自动重试机制
 
 ## 技术架构
 
-### 3.1 整体架构（简化版）
+### 3.1 整体架构（扩展版）
 ```
 前端(Vue.js) → Web服务器(Django) → 数据库(MySQL) → 缓存(Redis)
                     ↓
-               定时任务(Django Cron)
+               Celery异步任务队列 → 网络爬虫模块
+                    ↓              ↓
+            定时任务调度器 ← 多数据源爬取 → 数据清洗验证
 ```
 
 ### 3.2 后端技术栈
@@ -96,7 +108,10 @@
 - **数据库**：MySQL 8.0+
 - **ORM**：Django ORM
 - **缓存**：Redis 7.0+（可选，用于提升查询性能）
-- **定时任务**：Django-cron（数据同步）
+- **异步任务**：Celery + Redis（消息队列）
+- **定时任务**：django-celery-beat（数据同步调度）
+- **网络爬虫**：requests + beautifulsoup4（HTTP请求和HTML解析）
+- **数据处理**：pandas + numpy（数据清洗和验证）
 - **Web服务器**：Django开发服务器（开发期）/ Gunicorn（生产环境）
 - **API框架**：Django REST Framework
 
@@ -190,6 +205,47 @@ CREATE TABLE predictions (
 );
 ```
 
+#### 4.1.5 爬虫执行记录表 (crawl_logs)
+```sql
+CREATE TABLE crawl_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    source VARCHAR(50) NOT NULL COMMENT '数据源名称',
+    crawl_type ENUM('history', 'latest', 'incremental') NOT NULL COMMENT '爬取类型',
+    start_time DATETIME NOT NULL COMMENT '开始时间',
+    end_time DATETIME COMMENT '结束时间',
+    status ENUM('running', 'success', 'failed', 'stopped') NOT NULL COMMENT '执行状态',
+    records_found INT DEFAULT 0 COMMENT '发现记录数',
+    records_saved INT DEFAULT 0 COMMENT '保存记录数',
+    records_updated INT DEFAULT 0 COMMENT '更新记录数',
+    error_message TEXT COMMENT '错误信息',
+    task_id VARCHAR(255) COMMENT 'Celery任务ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_source (source),
+    INDEX idx_status (status),
+    INDEX idx_start_time (start_time)
+);
+```
+
+#### 4.1.6 数据源配置表 (data_sources)
+```sql
+CREATE TABLE data_sources (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL UNIQUE COMMENT '数据源名称',
+    source_type ENUM('website', 'api', 'file') NOT NULL COMMENT '数据源类型',
+    base_url VARCHAR(500) NOT NULL COMMENT '基础URL',
+    is_active BOOLEAN DEFAULT TRUE COMMENT '是否启用',
+    crawl_interval INT DEFAULT 3600 COMMENT '爬取间隔(秒)',
+    last_crawl_time DATETIME COMMENT '最后爬取时间',
+    success_count INT DEFAULT 0 COMMENT '成功次数',
+    fail_count INT DEFAULT 0 COMMENT '失败次数',
+    config_json JSON COMMENT '配置参数',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_name (name),
+    INDEX idx_active (is_active)
+);
+```
+
 ### 4.2 数据索引优化
 - 为常用查询字段创建索引
 - 组合索引优化复杂查询
@@ -238,6 +294,19 @@ GET /api/v1/user/profile/             # 用户资料
 PUT /api/v1/user/profile/             # 更新资料
 ```
 
+#### 5.2.5 爬虫管理API
+```
+POST /api/v1/crawler/start/           # 启动爬虫任务
+POST /api/v1/crawler/stop/            # 停止爬虫任务
+GET /api/v1/crawler/status/           # 获取爬虫状态
+GET /api/v1/crawler/logs/             # 获取爬取日志
+POST /api/v1/sync/latest/             # 同步最新数据
+POST /api/v1/sync/range/              # 按时间范围同步
+GET /api/v1/sync/progress/            # 获取同步进度
+GET /api/v1/datasources/              # 获取数据源列表
+PUT /api/v1/datasources/{id}/         # 更新数据源配置
+```
+
 ### 5.3 API响应格式
 ```json
 {
@@ -281,6 +350,13 @@ PUT /api/v1/user/profile/             # 更新资料
 - 数据分析学习记录
 - 收藏功能
 - 个人统计报告
+
+#### 6.1.6 爬虫管理页面
+- 爬虫任务启动/停止控制界面
+- 数据源配置和状态管理
+- 爬取进度实时监控
+- 爬取日志查看和分析
+- 数据同步历史记录
 
 ### 6.2 UI/UX设计要求
 - 响应式设计，支持移动端
@@ -381,20 +457,23 @@ Internet → Nginx → Django Application → MySQL + Redis(可选)
 ## 数据来源
 
 ### 9.1 官方数据源
-- 中国福利彩票官方网站
-- 各省市福彩中心官网
-- 官方API接口（如有）
+- **中国福利彩票官方网站**：https://www.zhcw.com/kjxx/ssq/（权威可靠）
+- **各省市福彩中心官网**：作为备用数据源和验证渠道
+- **官方API接口**：如有可用的官方数据接口
 
 ### 9.2 第三方数据源
-- 彩票数据网站
-- 开奖结果汇总网站
-- 数据服务商API
+- **500彩票网**：https://datachart.500.com/ssq/history/（历史数据丰富）
+- **新浪彩票**：https://sports.sina.com.cn/lotto/ssq/（数据更新及时）
+- **免费彩票API**：第三方数据服务商的免费API接口
+- **彩票数据聚合网站**：作为数据对比和验证来源
 
 ### 9.3 数据获取策略
-- 定时爬虫程序
-- 数据验证机制
-- 多源数据校验
-- 异常数据处理
+- **智能爬虫程序**：支持多数据源并行爬取，自动适应网站结构变化
+- **增量更新机制**：只获取新增或变更的数据，避免重复爬取
+- **数据验证机制**：多源数据交叉验证，确保数据准确性
+- **异常数据处理**：自动识别和处理异常数据，包含数据清洗和修复
+- **反爬虫对策**：合理的请求频率、用户代理轮换、IP代理支持
+- **容错和重试**：网络异常自动重试，断点续传支持
 
 ## 安全考虑
 
