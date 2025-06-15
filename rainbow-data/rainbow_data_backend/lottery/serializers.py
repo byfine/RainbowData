@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
-from .models import LotteryResult, Statistics, Prediction, UserAnalysisLog, DataSource, CrawlLog, UserProfile
+from .models import LotteryResult, Statistics, Prediction, UserAnalysisLog, DataSource, CrawlLog, UserProfile, UserFavorite
 
 
 class LotteryResultSerializer(serializers.ModelSerializer):
@@ -412,3 +412,84 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.save()
         
         return instance
+
+
+class UserFavoriteSerializer(serializers.ModelSerializer):
+    """用户收藏序列化器"""
+    favorite_type_display = serializers.CharField(source='get_favorite_type_display', read_only=True)
+    user_profile_name = serializers.CharField(source='user_profile.user.username', read_only=True)
+    content_summary = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserFavorite
+        fields = [
+            'id', 'user_profile', 'user_profile_name', 'favorite_type', 'favorite_type_display',
+            'object_id', 'content_data', 'title', 'description', 'tags',
+            'is_public', 'view_count', 'content_summary', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['user_profile', 'view_count', 'created_at', 'updated_at']
+    
+    def get_content_summary(self, obj):
+        """获取内容摘要"""
+        return obj.get_content_summary()
+
+
+class UserFavoriteCreateSerializer(serializers.ModelSerializer):
+    """用户收藏创建序列化器"""
+    
+    class Meta:
+        model = UserFavorite
+        fields = [
+            'favorite_type', 'object_id', 'content_data', 
+            'title', 'description', 'tags', 'is_public'
+        ]
+    
+    def validate(self, data):
+        """验证收藏数据"""
+        favorite_type = data.get('favorite_type')
+        object_id = data.get('object_id')
+        content_data = data.get('content_data')
+        
+        # 根据收藏类型验证数据
+        if favorite_type in ['lottery_result', 'prediction'] and not object_id:
+            raise serializers.ValidationError('此类型的收藏需要提供对象ID')
+        
+        if favorite_type in ['number_set', 'analysis'] and not content_data:
+            raise serializers.ValidationError('此类型的收藏需要提供内容数据')
+        
+        if favorite_type == 'number_set' and content_data:
+            red_balls = content_data.get('red_balls', [])
+            blue_ball = content_data.get('blue_ball')
+            
+            # 验证红球数量和范围
+            if len(red_balls) != 6:
+                raise serializers.ValidationError('红球必须是6个')
+            if not all(1 <= ball <= 33 for ball in red_balls):
+                raise serializers.ValidationError('红球号码必须在1-33之间')
+            if len(set(red_balls)) != 6:
+                raise serializers.ValidationError('红球号码不能重复')
+            
+            # 验证蓝球范围
+            if not (1 <= blue_ball <= 16):
+                raise serializers.ValidationError('蓝球号码必须在1-16之间')
+        
+        if favorite_type == 'analysis' and content_data:
+            # 验证分析结果数据
+            analysis_type = content_data.get('analysis_type')
+            if not analysis_type:
+                raise serializers.ValidationError('分析结果收藏需要提供分析类型')
+        
+        return data
+    
+    def create(self, validated_data):
+        """创建收藏记录"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # 获取或创建用户扩展资料
+            user_profile, created = UserProfile.objects.get_or_create(
+                user=request.user,
+                defaults={'user_type': 'normal'}
+            )
+            validated_data['user_profile'] = user_profile
+        
+        return super().create(validated_data)

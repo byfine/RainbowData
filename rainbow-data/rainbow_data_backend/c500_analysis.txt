@@ -1,0 +1,491 @@
+============================================================
+500 Lottery Website Page Structure Analysis
+============================================================
+Found 4 tables
+
+--- Table 1 ---
+Rows: 4
+  Row 1: 3 columns
+    Col1: ...
+    Col3: ...
+  Row 2: 3 columns
+    Col1: ...
+    Col3: ...
+  Row 3: 2 columns
+    Col1: ...
+    Col2: ...
+  Row 4: 2 columns
+    Col2:   ...
+
+--- Table 2 ---
+Rows: 55
+  Row 1: 2105 columns
+    Col1:  | ...
+    Col2:  | ...
+    Col3: 3050...
+    Col4: 
+		   ...
+    Col5: ...
+    Col6: 1 <- Possible red ball
+    Col7: 2 <- Possible red ball
+    Col8: 3 <- Possible red ball
+    Col9: 4 <- Possible red ball
+    Col10: 5 <- Possible red ball
+    Col11: 6 <- Possible red ball
+    Col12: 7 <- Possible red ball
+    Col13: 8 <- Possible red ball
+    Col14: 9 <- Possible red ball
+    Col15: 10 <- Possible red ball
+  Row 2: 2 columns
+    Col1:  | ...
+    Col2: 3050...
+  Row 3: 1 columns
+    Col1: 
+		   ...
+  Row 4: 51 columns
+    Col1: ...
+    Col2: 1 <- Possible red ball
+    Col3: 2 <- Possible red ball
+    Col4: 3 <- Possible red ball
+    Col5: 4 <- Possible red ball
+    Col6: 5 <- Possible red ball
+    Col7: 6 <- Possible red ball
+    Col8: 7 <- Possible red ball
+    Col9: 8 <- Possible red ball
+    Col10: 9 <- Possible red ball
+    Col11: 10 <- Possible red ball
+    Col12: 11 <- Possible red ball
+    Col13: 12 <- Possible red ball
+    Col14: 13 <- Possible red ball
+    Col15: 14 <- Possible red ball
+  Row 5: 51 columns
+    Col1: 25035 <- Possible issue number
+    Col2: 1 <- Possible red ball
+    Col3: 19 <- Possible red ball
+    Col4: 2 <- Possible red ball
+    Col5: 5 <- Possible red ball
+    Col6: 1 <- Possible red ball
+    Col7: 4 <- Possible red ball
+    Col8: 5 <- Possible red ball
+    Col9: 8 <- Possible red ball
+    Col10: 7 <- Possible red ball
+    Col11: 3 <- Possible red ball
+    Col12: 11 <- Possible red ball
+    Col13: 9 <- Possible red ball
+    Col14: 1 <- Possible red ball
+    Col15: 1 <- Possible red ball
+
+--- Table 3 ---
+Rows: 1
+  Row 1: 2 columns
+    Col1:  | ...
+    Col2: 3050...
+
+--- Table 4 ---
+Rows: 51
+  Row 1: 1 columns
+    Col1: 
+		   ...
+  Row 2: 51 columns
+    Col1: ...
+    Col2: 1 <- Possible red ball
+    Col3: 2 <- Possible red ball
+    Col4: 3 <- Possible red ball
+    Col5: 4 <- Possible red ball
+    Col6: 5 <- Possible red ball
+    Col7: 6 <- Possible red ball
+    Col8: 7 <- Possible red ball
+    Col9: 8 <- Possible red ball
+    Col10: 9 <- Possible red ball
+    Col11: 10 <- Possible red ball
+    Col12: 11 <- Possible red ball
+    Col13: 12 <- Possible red ball
+    Col14: 13 <- Possible red ball
+    Col15: 14 <- Possible red ball
+  Row 3: 51 columns
+    Col1: 25035 <- Possible issue number
+    Col2: 1 <- Possible red ball
+    Col3: 19 <- Possible red ball
+    Col4: 2 <- Possible red ball
+    Col5: 5 <- Possible red ball
+    Col6: 1 <- Possible red ball
+    Col7: 4 <- Possible red ball
+    Col8: 5 <- Possible red ball
+    Col9: 8 <- Possible red ball
+    Col10: 7 <- Possible red ball
+    Col11: 3 <- Possible red ball
+    Col12: 11 <- Possible red ball
+    Col13: 9 <- Possible red ball
+    Col14: 1 <- Possible red ball
+    Col15: 1 <- Possible red ball
+  Row 4: 51 columns
+    Col1: 25036 <- Possible issue number
+    Col2: 1 <- Possible red ball
+    Col3: 20 <- Possible red ball
+    Col4: 3 <- Possible red ball
+    Col5: 6 <- Possible red ball
+    Col6: 5 <- Possible red ball
+    Col7: 5 <- Possible red ball
+    Col8: 6 <- Possible red ball
+    Col9: 1 <- Possible red ball
+    Col10: 8 <- Possible red ball
+    Col11: 4 <- Possible red ball
+    Col12: 11 <- Possible red ball
+    Col13: 10 <- Possible red ball
+    Col14: 13 <- Possible red ball
+    Col15: 2 <- Possible red ball
+  Row 5: 51 columns
+    Col1: 25037 <- Possible issue number
+    Col2: 2 <- Possible red ball
+    Col3: 21 <- Possible red ball
+    Col4: 3 <- Possible red ball
+    Col5: 7 <- Possible red ball
+    Col6: 1 <- Possible red ball
+    Col7: 6 <- Possible red ball
+    Col8: 7 <- Possible red ball
+    Col9: 2 <- Possible red ball
+    Col10: 9 <- Possible red ball
+    Col11: 5 <- Possible red ball
+    Col12: 11 <- Possible red ball
+    Col13: 11 <- Possible red ball
+    Col14: 1 <- Possible red ball
+    Col15: 3 <- Possible red ball
+
+============================================================
+Detailed Analysis of Lottery Number Data Rows
+============================================================
+Analyzing main table with 55 rows
+
+Analyzing Row 1 (total 2105 columns):
+  Pattern2(Pos0): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos1): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos2): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos3): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos4): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos5): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos6): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos7): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos8): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos9): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos27): Red[28, 29, 30, 31, 32, 33] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos28): Red[29, 30, 31, 32, 33, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos29): Red[30, 31, 32, 33, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos30): Red[31, 32, 33, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos31): Red[32, 33, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos32): Red[33, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos33): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos34): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos35): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos36): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos37): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos38): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos39): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos40): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos41): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos42): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos43): Red[11, 12, 13, 14, 15, 16] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos44): Red[12, 13, 14, 15, 16, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos45): Red[13, 14, 15, 16, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos46): Red[14, 15, 16, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos47): Red[15, 16, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos48): Red[16, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos49): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos50): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos51): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos52): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos53): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos54): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos55): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos56): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos57): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos58): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos76): Red[28, 29, 30, 31, 32, 33] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos77): Red[29, 30, 31, 32, 33, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos78): Red[30, 31, 32, 33, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos79): Red[31, 32, 33, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos80): Red[32, 33, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos81): Red[33, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos82): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos83): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos84): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos85): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos86): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos87): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos88): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos89): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos90): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos91): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos92): Red[11, 12, 13, 14, 15, 16] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos93): Red[12, 13, 14, 15, 16, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos94): Red[13, 14, 15, 16, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos95): Red[14, 15, 16, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos96): Red[15, 16, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos97): Red[16, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos98): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos99): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos100): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos101): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos102): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos103): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos104): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos105): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos106): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos107): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos125): Red[28, 29, 30, 31, 32, 33] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos126): Red[29, 30, 31, 32, 33, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos127): Red[30, 31, 32, 33, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos128): Red[31, 32, 33, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos129): Red[32, 33, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos130): Red[33, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos131): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos132): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos133): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos134): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos135): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos136): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos137): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos138): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos139): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos140): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos141): Red[11, 12, 13, 14, 15, 16] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos142): Red[12, 13, 14, 15, 16, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos143): Red[13, 14, 15, 16, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos144): Red[14, 15, 16, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos145): Red[15, 16, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos146): Red[16, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos147): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos148): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos149): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos150): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos151): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos152): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos153): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos154): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos155): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos156): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos174): Red[28, 29, 30, 31, 32, 33] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos175): Red[29, 30, 31, 32, 33, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos176): Red[30, 31, 32, 33, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos177): Red[31, 32, 33, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos178): Red[32, 33, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos179): Red[33, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos180): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos181): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos182): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos183): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos184): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos185): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos186): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos187): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos188): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos189): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos190): Red[11, 12, 13, 14, 15, 16] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos191): Red[12, 13, 14, 15, 16, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos192): Red[13, 14, 15, 16, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos193): Red[14, 15, 16, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos194): Red[15, 16, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos195): Red[16, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos196): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos197): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos198): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos199): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos200): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos201): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos202): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos203): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos204): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos205): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+  Pattern2(Pos223): Red[28, 29, 30, 31, 32, 33] Blue1
+    VALID - Data validation passed
+  Pattern2(Pos224): Red[29, 30, 31, 32, 33, 1] Blue2
+    VALID - Data validation passed
+  Pattern2(Pos225): Red[30, 31, 32, 33, 1, 2] Blue3
+    VALID - Data validation passed
+  Pattern2(Pos226): Red[31, 32, 33, 1, 2, 3] Blue4
+    VALID - Data validation passed
+  Pattern2(Pos227): Red[32, 33, 1, 2, 3, 4] Blue5
+    VALID - Data validation passed
+  Pattern2(Pos228): Red[33, 1, 2, 3, 4, 5] Blue6
+    VALID - Data validation passed
+  Pattern2(Pos229): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+  Pattern2(Pos230): Red[2, 3, 4, 5, 6, 7] Blue8
+    VALID - Data validation passed
+  Pattern2(Pos231): Red[3, 4, 5, 6, 7, 8] Blue9
+    VALID - Data validation passed
+  Pattern2(Pos232): Red[4, 5, 6, 7, 8, 9] Blue10
+    VALID - Data validation passed
+  Pattern2(Pos233): Red[5, 6, 7, 8, 9, 10] Blue11
+    VALID - Data validation passed
+  Pattern2(Pos234): Red[6, 7, 8, 9, 10, 11] Blue12
+    VALID - Data validation passed
+  Pattern2(Pos235): Red[7, 8, 9, 10, 11, 12] Blue13
+    VALID - Data validation passed
+  Pattern2(Pos236): Red[8, 9, 10, 11, 12, 13] Blue14
+    VALID - Data validation passed
+  Pattern2(Pos237): Red[9, 10, 11, 12, 13, 14] Blue15
+    VALID - Data validation passed
+  Pattern2(Pos238): Red[10, 11, 12, 13, 14, 15] Blue16
+    VALID - Data validation passed
+
+Analyzing Row 4 (total 51 columns):
+  Pattern1(Col2-8): Red[1, 2, 3, 4, 5, 6] Blue7
+    VALID - Data validation passed
+
+Analyzing Row 5 (total 51 columns):
+  Pattern1(Col2-8): Red[1, 19, 2, 5, 1, 4] Blue5
+    INVALID - Data validation failed
+
+Analyzing Row 6 (total 51 columns):
+  Pattern1(Col2-8): Red[1, 20, 3, 6, 5, 5] Blue6
+    INVALID - Data validation failed
+
+Analyzing Row 7 (total 51 columns):
+  Pattern1(Col2-8): Red[2, 21, 3, 7, 1, 6] Blue7
+    VALID - Data validation passed
+
+Analyzing Row 8 (total 51 columns):
+  Pattern1(Col2-8): Red[3, 22, 1, 8, 2, 6] Blue8
+    VALID - Data validation passed
+
+Analyzing Row 9 (total 51 columns):
+  Pattern1(Col2-8): Red[4, 23, 2, 9, 3, 1] Blue9
+    VALID - Data validation passed

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_filters',
+    'django_celery_beat',  # Celery定时任务
     # Local apps
     'lottery',
 ]
@@ -175,3 +176,39 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Custom User Model (暂时注释保持系统稳定)
 # AUTH_USER_MODEL = 'lottery.User'
+
+# ================================
+# Celery Configuration
+# ================================
+
+# Celery Broker Configuration (Redis)
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+# Celery Task Configuration
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Celery Beat Configuration (定时任务)
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Celery Task Routing (暂时注释以避免队列问题)
+# CELERY_TASK_ROUTES = {
+#     'lottery.tasks.crawl_latest_data': {'queue': 'crawler'},
+#     'lottery.tasks.update_statistics': {'queue': 'analysis'},
+#     'lottery.tasks.data_quality_check': {'queue': 'maintenance'},
+# }
+
+# Celery Worker Configuration
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
+CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
+
+# Task Execution Configuration
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5分钟软限制
+CELERY_TASK_TIME_LIMIT = 600       # 10分钟硬限制
+CELERY_TASK_MAX_RETRIES = 3        # 最大重试次数
+CELERY_TASK_DEFAULT_RETRY_DELAY = 60  # 重试延迟（秒）

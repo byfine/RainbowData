@@ -16,6 +16,9 @@ router.register(r'logs', views.UserAnalysisLogViewSet, basename='useranalysislog
 router.register(r'datasources', views.DataSourceViewSet, basename='datasource')
 router.register(r'crawler/logs', views.CrawlLogViewSet, basename='crawllog')
 
+# 用户功能相关路由
+router.register(r'favorites', views.UserFavoriteViewSet, basename='userfavorite')
+
 # 应用的URL模式
 app_name = 'lottery'
 
@@ -30,6 +33,11 @@ urlpatterns = [
     path('api/v1/auth/me/', views.CurrentUserView.as_view(), name='current_user'),
     path('api/v1/user/profile/', views.UserProfileView.as_view(), name='user_profile'),
     path('api/v1/user/change-password/', views.ChangePasswordView.as_view(), name='change_password'),
+    path('api/v1/user/stats/', views.UserStatsView.as_view(), name='user_stats'),
+    
+    # 权限管理API端点
+    path('api/v1/user/permissions/', views.UserPermissionsView.as_view(), name='user_permissions'),
+    path('api/v1/admin/stats/', views.AdminOnlyView.as_view(), name='admin_stats'),
     
     # 爬虫管理API端点
     path('api/v1/crawler/', views.CrawlerManagementView.as_view(), name='crawler_management'),

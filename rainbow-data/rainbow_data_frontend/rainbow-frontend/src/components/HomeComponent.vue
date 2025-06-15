@@ -454,29 +454,152 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
   .banner-content .title {
-    font-size: 28px;
+    font-size: 32px;
   }
   
   .rainbow-icon {
-    font-size: 32px;
-    margin-right: 10px;
+    font-size: 36px;
   }
   
   .balls-display {
-    flex-direction: column;
     gap: 15px;
   }
   
   .ball {
-    width: 35px;
-    height: 35px;
-    font-size: 14px;
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
   }
   
   .nav-icon {
-    font-size: 36px;
+    font-size: 42px;
+  }
+  
+  .nav-title {
+    font-size: 16px;
+  }
+  
+  .nav-description {
+    font-size: 13px;
+  }
+  
+  .stat-value {
+    font-size: 22px;
+  }
+}
+
+/* 移动端适配 (< 768px) */
+@media (max-width: 768px) {
+  .banner-content .title {
+    font-size: 24px;
+    text-align: center;
+  }
+  
+  .rainbow-icon {
+    font-size: 28px;
+    margin-right: 8px;
+  }
+  
+  .balls-display {
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+  }
+  
+  .balls-container {
+    gap: 6px;
+  }
+  
+  .ball {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  
+  .nav-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+  
+  .nav-title {
+    font-size: 16px;
+  }
+  
+  .nav-description {
+    font-size: 12px;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  .result-info {
+    font-size: 14px;
+  }
+  
+  .balls-label {
+    font-size: 14px;
+  }
+}
+
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
+  .banner-content .title {
+    font-size: 20px;
+  }
+  
+  .rainbow-icon {
+    font-size: 24px;
+    margin-right: 6px;
+  }
+  
+  .balls-display {
+    gap: 15px;
+  }
+  
+  .balls-container {
+    gap: 4px;
+  }
+  
+  .ball {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .nav-icon {
+    font-size: 28px;
+  }
+  
+  .nav-title {
+    font-size: 14px;
+  }
+  
+  .nav-description {
+    font-size: 11px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+  }
+  
+  .result-info {
+    font-size: 13px;
+  }
+  
+  .balls-label {
+    font-size: 13px;
+  }
+  
+  .nav-content {
+    padding: 15px 8px;
   }
 }
 </style> 

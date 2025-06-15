@@ -79,7 +79,18 @@
         <div class="card-header">
           <span class="header-icon">🎯</span>
           <span class="header-title">预测结果</span>
-          <el-tag type="warning" size="small">仅供娱乐</el-tag>
+          <div class="header-actions">
+            <el-tag type="warning" size="small">仅供娱乐</el-tag>
+            <el-button 
+              v-if="isAuthenticated"
+              size="small" 
+              type="warning" 
+              @click="addPredictionToFavorites(predictionResult)"
+            >
+              <el-icon><Star /></el-icon>
+              收藏此预测
+            </el-button>
+          </div>
         </div>
       </template>
       
@@ -178,15 +189,16 @@
           <el-table
             :data="predictionHistory"
             stripe
-            style="width: 100%; margin-top: 15px;"
+            style="width: 100%; margin-top: 15px; table-layout: fixed;"
+            class="fixed-header-table"
           >
-            <el-table-column prop="target_issue" label="预测期号" width="120" align="center" />
-            <el-table-column prop="algorithm" label="算法" width="100" align="center">
+            <el-table-column prop="target_issue" label="预测期号" width="120" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="algorithm" label="算法" width="100" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 {{ getAlgorithmName(scope.row.algorithm) }}
               </template>
             </el-table-column>
-            <el-table-column label="预测红球" align="center">
+            <el-table-column label="预测红球" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <div class="balls-display">
                   <span
@@ -199,21 +211,32 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="predicted_blue_ball" label="预测蓝球" width="80" align="center">
+            <el-table-column prop="predicted_blue_ball" label="预测蓝球" width="80" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <span class="ball blue-ball small">
                   {{ scope.row.predicted_blue_ball }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="confidence" label="置信度" width="80" align="center">
+            <el-table-column prop="confidence" label="置信度" width="80" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 {{ scope.row.confidence }}%
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" align="center">
+            <el-table-column prop="created_at" label="创建时间" width="150" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 {{ formatDateTime(scope.row.created_at) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" align="center" :resizable="false">
+              <template #default="scope">
+                <el-button
+                  size="small"
+                  type="warning"
+                  @click="addPredictionToFavorites(scope.row)"
+                >
+                  <el-icon><Star /></el-icon>
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -266,6 +289,7 @@
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Star } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 // 定义组件事件
@@ -388,6 +412,79 @@ const resetForm = () => {
   predictionResult.value = null
 }
 
+// 快捷收藏预测记录功能
+const addPredictionToFavorites = async (prediction) => {
+  if (!isAuthenticated.value) {
+    ElMessage.warning('请先登录后再收藏')
+    return
+  }
+  
+  try {
+    // 先检查是否已经收藏过
+    const checkResponse = await axios.get(`${API_BASE_URL}/api/v1/favorites/`)
+    if (checkResponse.status === 200) {
+      const existingFavorites = checkResponse.data.results || checkResponse.data
+      const existingFavorite = existingFavorites.find(fav => 
+        fav.favorite_type === 'prediction' && fav.object_id === prediction.id
+      )
+      
+      if (existingFavorite) {
+        ElMessage.warning(`预测记录 ${prediction.target_issue} 已经收藏过了`)
+        return
+      }
+    }
+    
+    const submitData = {
+      favorite_type: 'prediction',
+      object_id: prediction.id,
+      title: `预测 ${prediction.target_issue} - ${getAlgorithmName(prediction.algorithm)}`,
+      description: `红球: ${prediction.predicted_red_balls.join(', ')} 蓝球: ${prediction.predicted_blue_ball} (置信度: ${prediction.confidence}%)`,
+      tags: ['预测记录', prediction.algorithm, prediction.target_issue],
+      is_public: false
+    }
+    
+    const response = await axios.post(`${API_BASE_URL}/api/v1/favorites/`, submitData)
+    
+    // Django DRF创建成功返回201状态码
+    if (response.status === 201) {
+      ElMessage.success('收藏成功！')
+    } else {
+      ElMessage.error('收藏失败')
+    }
+    
+  } catch (error) {
+    console.error('收藏失败:', error)
+    
+    if (error.response) {
+      // 服务器返回了错误响应
+      const status = error.response.status
+      if (status === 401) {
+        ElMessage.error('请先登录后再收藏')
+      } else if (status === 400) {
+        // 显示验证错误信息
+        const errorData = error.response.data
+        if (errorData && typeof errorData === 'object') {
+          const errors = Object.values(errorData).flat()
+          ElMessage.error(`收藏失败: ${errors.join(', ')}`)
+        } else {
+          ElMessage.error('收藏数据格式错误')
+        }
+      } else if (status === 500) {
+        // 500错误通常是重复收藏导致的IntegrityError
+        ElMessage.warning('该预测记录已经收藏过了')
+      } else {
+        ElMessage.error(`收藏失败 (${status})`)
+      }
+    } else if (error.request) {
+      // 网络错误
+      ElMessage.error('网络错误，请检查网络连接')
+    } else {
+      // 其他错误
+      ElMessage.error('收藏失败，请稍后重试')
+    }
+  }
+}
+
 // 组件挂载时的处理
 onMounted(() => {
   // 只有登录用户才加载历史记录
@@ -471,6 +568,12 @@ onMounted(() => {
   font-size: 16px;
   font-weight: bold;
   flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* 按钮样式 */
@@ -557,45 +660,241 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
   .page-title {
-    font-size: 24px;
+    font-size: 26px;
   }
   
   .title-icon {
-    font-size: 28px;
+    font-size: 30px;
   }
   
   .ball {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
   }
   
   .ball.small {
-    width: 22px;
-    height: 22px;
-    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
   }
   
   .balls-container {
-    gap: 8px;
+    gap: 6px;
   }
   
   .section-title {
     font-size: 18px;
   }
   
-  .prediction-display {
-    text-align: left;
+  .prediction-info {
+    margin: 15px 0;
   }
   
-  .numbers-section {
-    margin: 20px 0;
+  .prediction-meta {
+    font-size: 13px;
+  }
+  
+  .accuracy-info {
+    font-size: 13px;
+  }
+}
+
+/* 移动端适配 (< 768px) */
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 20px;
+    text-align: center;
+  }
+  
+  .title-icon {
+    font-size: 24px;
+  }
+  
+  .page-description {
+    font-size: 14px;
+    text-align: center;
+  }
+  
+  .prediction-form {
+    padding: 15px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    font-size: 14px;
+    margin-bottom: 8px;
   }
   
   .ball {
-    margin: 2px;
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+    margin: 1px;
+  }
+  
+  .ball.small {
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
+  }
+  
+  .balls-container {
+    gap: 4px;
+    justify-content: center;
+  }
+  
+  .section-title {
+    font-size: 16px;
+    text-align: center;
+  }
+  
+  .prediction-display {
+    text-align: center;
+    padding: 15px;
+  }
+  
+  .numbers-section {
+    margin: 15px 0;
+  }
+  
+  .prediction-info {
+    margin: 15px 0;
+    text-align: center;
+  }
+  
+  .prediction-meta {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .accuracy-info {
+    font-size: 12px;
+  }
+  
+  .login-guide {
+    padding: 15px;
+  }
+  
+  .login-buttons {
+    margin-top: 15px;
+  }
+  
+  .login-buttons .el-button {
+    margin: 5px;
+    width: calc(50% - 10px);
+  }
+  
+  .history-info {
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+  
+  .prediction-card {
+    margin-bottom: 15px;
+    padding: 12px;
+  }
+  
+  .prediction-note {
+    margin-top: 20px;
+    padding: 15px;
+  }
+}
+
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 18px;
+  }
+  
+  .title-icon {
+    font-size: 20px;
+  }
+  
+  .page-description {
+    font-size: 12px;
+  }
+  
+  .prediction-form {
+    padding: 12px;
+  }
+  
+  .form-group {
+    margin-bottom: 12px;
+  }
+  
+  .form-group label {
+    font-size: 13px;
+  }
+  
+  .ball {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  
+  .ball.small {
+    width: 16px;
+    height: 16px;
+    font-size: 8px;
+  }
+  
+  .balls-container {
+    gap: 3px;
+  }
+  
+  .section-title {
+    font-size: 14px;
+  }
+  
+  .prediction-display {
+    padding: 12px;
+  }
+  
+  .numbers-section {
+    margin: 12px 0;
+  }
+  
+  .prediction-info {
+    margin: 12px 0;
+  }
+  
+  .prediction-meta {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+  
+  .accuracy-info {
+    font-size: 11px;
+  }
+  
+  .login-guide {
+    padding: 12px;
+  }
+  
+  .login-buttons .el-button {
+    width: 100%;
+    margin: 5px 0;
+  }
+  
+  .history-info {
+    font-size: 11px;
+  }
+  
+  .prediction-card {
+    margin-bottom: 12px;
+    padding: 10px;
+  }
+  
+  .prediction-note {
+    margin-top: 15px;
+    padding: 12px;
   }
 }
 

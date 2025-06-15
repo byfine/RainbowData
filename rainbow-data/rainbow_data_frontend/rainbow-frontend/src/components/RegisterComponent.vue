@@ -380,17 +380,173 @@ defineExpose({
 }
 
 /* 响应式设计 */
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .register-container {
+    padding: 15px;
+  }
+  
+  .register-card {
+    max-width: 550px;
+  }
+  
+  .card-header {
+    font-size: 17px;
+  }
+  
+  .header-icon {
+    font-size: 22px;
+  }
+  
+  .el-dialog {
+    width: 85% !important;
+  }
+}
+
+/* 移动端适配 (< 768px) */
 @media (max-width: 768px) {
   .register-container {
     padding: 10px;
+    min-height: 60vh;
   }
   
   .register-card {
     margin: 0;
+    max-width: 100%;
+  }
+  
+  .card-header {
+    font-size: 16px;
+  }
+  
+  .header-icon {
+    font-size: 20px;
+  }
+  
+  .el-form-item {
+    margin-bottom: 18px;
+  }
+  
+  .el-form-item__label {
+    font-size: 14px;
+  }
+  
+  .el-input {
+    height: 40px;
+  }
+  
+  .el-button {
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  .register-footer {
+    font-size: 13px;
+  }
+  
+  .register-footer .el-button {
+    font-size: 13px;
   }
   
   .el-dialog {
     width: 95% !important;
+    margin: 5vh auto;
+  }
+  
+  .terms-content,
+  .privacy-content {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .terms-content h3,
+  .privacy-content h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+  }
+  
+  .terms-content p,
+  .privacy-content p {
+    margin-bottom: 12px;
+  }
+  
+  .terms-content ul,
+  .privacy-content ul {
+    margin: 8px 0;
+    padding-left: 18px;
+  }
+}
+
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
+  .register-container {
+    padding: 8px;
+    min-height: 50vh;
+  }
+  
+  .card-header {
+    font-size: 15px;
+  }
+  
+  .header-icon {
+    font-size: 18px;
+  }
+  
+  .el-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .el-form-item__label {
+    font-size: 13px;
+  }
+  
+  .el-input {
+    height: 38px;
+  }
+  
+  .el-button {
+    height: 38px;
+    font-size: 15px;
+  }
+  
+  .register-footer {
+    font-size: 12px;
+  }
+  
+  .register-footer .el-button {
+    font-size: 12px;
+  }
+  
+  .el-dialog {
+    width: 98% !important;
+    margin: 2vh auto;
+  }
+  
+  .terms-content,
+  .privacy-content {
+    font-size: 13px;
+  }
+  
+  .terms-content h3,
+  .privacy-content h3 {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  
+  .terms-content p,
+  .privacy-content p {
+    margin-bottom: 10px;
+  }
+  
+  .terms-content ul,
+  .privacy-content ul {
+    margin: 6px 0;
+    padding-left: 16px;
+  }
+  
+  .terms-content li,
+  .privacy-content li {
+    margin-bottom: 3px;
   }
 }
 </style> 

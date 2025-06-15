@@ -211,13 +211,109 @@ defineExpose({
 }
 
 /* 响应式设计 */
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .login-container {
+    padding: 15px;
+  }
+  
+  .login-card {
+    max-width: 450px;
+  }
+  
+  .card-header {
+    font-size: 17px;
+  }
+  
+  .header-icon {
+    font-size: 22px;
+  }
+}
+
+/* 移动端适配 (< 768px) */
 @media (max-width: 768px) {
   .login-container {
     padding: 10px;
+    min-height: 50vh;
   }
   
   .login-card {
     margin: 0;
+    max-width: 100%;
+  }
+  
+  .card-header {
+    font-size: 16px;
+  }
+  
+  .header-icon {
+    font-size: 20px;
+  }
+  
+  .el-form-item {
+    margin-bottom: 20px;
+  }
+  
+  .el-form-item__label {
+    font-size: 14px;
+  }
+  
+  .el-input {
+    height: 40px;
+  }
+  
+  .el-button {
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  .login-footer {
+    font-size: 13px;
+  }
+  
+  .login-footer .el-button {
+    font-size: 13px;
+  }
+}
+
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 8px;
+    min-height: 40vh;
+  }
+  
+  .card-header {
+    font-size: 15px;
+  }
+  
+  .header-icon {
+    font-size: 18px;
+  }
+  
+  .el-form-item {
+    margin-bottom: 18px;
+  }
+  
+  .el-form-item__label {
+    font-size: 13px;
+  }
+  
+  .el-input {
+    height: 38px;
+  }
+  
+  .el-button {
+    height: 38px;
+    font-size: 15px;
+  }
+  
+  .login-footer {
+    font-size: 12px;
+  }
+  
+  .login-footer .el-button {
+    font-size: 12px;
   }
 }
 </style> 

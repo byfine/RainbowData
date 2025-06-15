@@ -24,6 +24,7 @@
         <el-radio-button label="frequency">号码频率</el-radio-button>
         <el-radio-button label="hot_cold">冷热分析</el-radio-button>
         <el-radio-button label="overview">统计概览</el-radio-button>
+        <el-radio-button label="charts">图表分析</el-radio-button>
         <el-radio-button label="advanced">高级分析</el-radio-button>
       </el-radio-group>
       
@@ -59,10 +60,11 @@
             :data="frequencyData"
             stripe
             border
-            style="width: 100%"
+            style="width: 100%; table-layout: fixed;"
             :default-sort="{ prop: 'appear_count', order: 'descending' }"
+            class="fixed-header-table"
           >
-            <el-table-column prop="ball_number" label="号码" width="80" align="center">
+            <el-table-column prop="ball_number" label="号码" width="80" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <span 
                   class="ball" 
@@ -72,18 +74,18 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="ball_type" label="类型" width="80" align="center">
+            <el-table-column prop="ball_type" label="类型" width="80" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <el-tag :type="scope.row.ball_type === 'red' ? 'danger' : 'primary'">
                   {{ scope.row.ball_type === 'red' ? '红球' : '蓝球' }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="appear_count" label="出现次数" width="100" align="center" sortable />
-            <el-table-column prop="avg_interval" label="平均间隔" width="100" align="center" sortable />
-            <el-table-column prop="max_interval" label="最大间隔" width="100" align="center" sortable />
-            <el-table-column prop="last_appear_issue" label="最后出现期号" align="center" />
-            <el-table-column label="频率条" align="center">
+            <el-table-column prop="appear_count" label="出现次数" width="100" align="center" sortable :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="avg_interval" label="平均间隔" width="100" align="center" sortable :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="max_interval" label="最大间隔" width="100" align="center" sortable :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="last_appear_issue" label="最后出现期号" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column label="频率条" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <div class="frequency-bar">
                   <div 
@@ -238,6 +240,210 @@
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
+    </div>
+
+    <!-- 图表分析 -->
+    <div v-if="activeTab === 'charts'">
+      <el-card class="filter-card" shadow="hover" style="margin-bottom: 20px;">
+        <template #header>
+          <div class="card-header">
+            <span class="header-icon">📊</span>
+            <span class="header-title">图表类型选择</span>
+          </div>
+        </template>
+        
+        <el-radio-group v-model="chartType" size="large">
+          <el-radio-button label="trend">走势图</el-radio-button>
+          <el-radio-button label="distribution">分布图</el-radio-button>
+          <el-radio-button label="heatmap">热力图</el-radio-button>
+          <el-radio-button label="trendline">趋势线</el-radio-button>
+        </el-radio-group>
+        
+        <div class="filter-controls" style="margin-top: 15px;">
+          <div class="parameter-group">
+            <label class="parameter-label">显示期数:</label>
+            <el-input-number 
+              v-model="chartLimit" 
+              :min="20" 
+              :max="200" 
+              placeholder="显示期数"
+              style="width: 150px;"
+            />
+            <span class="parameter-desc">选择图表显示的开奖期数（建议30-100期）</span>
+          </div>
+          
+          <div v-if="chartType === 'trend' || chartType === 'trendline'" class="parameter-group">
+            <label class="parameter-label">号码类型:</label>
+            <el-select v-model="chartBallType" placeholder="选择球类型" style="width: 120px;">
+              <el-option label="红球" value="red" />
+              <el-option label="蓝球" value="blue" />
+            </el-select>
+          </div>
+          
+          <el-button type="primary" @click="loadChartData" :loading="chartLoading">
+            生成图表
+          </el-button>
+        </div>
+      </el-card>
+
+      <!-- 走势图 -->
+      <div v-if="chartType === 'trend'">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span class="header-icon">📈</span>
+              <span class="header-title">号码出现走势图</span>
+              <div class="chart-info">
+                <el-tag type="info" size="small">最近{{ chartLimit }}期</el-tag>
+                <el-tag :type="chartBallType === 'red' ? 'danger' : 'primary'" size="small">
+                  {{ chartBallType === 'red' ? '红球' : '蓝球' }}
+                </el-tag>
+              </div>
+            </div>
+          </template>
+          
+          <div class="chart-container">
+            <div v-if="chartLoading" class="loading-container">
+              <el-skeleton :rows="8" animated />
+            </div>
+            <div v-show="!chartLoading" ref="trendChart" class="echarts-container"></div>
+          </div>
+            
+          <div class="chart-description">
+            <el-alert
+              title="走势图说明"
+              description="纵轴表示号码，横轴表示开奖期号。红色圆点表示该号码在该期中奖。可以观察号码的出现频率和间隔规律。"
+              type="info"
+              show-icon
+              :closable="false"
+            />
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 分布图 -->
+      <div v-if="chartType === 'distribution'">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-card class="chart-card" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <span class="header-icon">📊</span>
+                  <span class="header-title">红球出现频率分布</span>
+                </div>
+              </template>
+              
+              <div class="chart-container">
+                <div v-if="chartLoading" class="loading-container">
+                  <el-skeleton :rows="6" animated />
+                </div>
+                <div v-show="!chartLoading" ref="redDistributionChart" class="echarts-container"></div>
+              </div>
+            </el-card>
+          </el-col>
+          
+          <el-col :span="12">
+            <el-card class="chart-card" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <span class="header-icon">📊</span>
+                  <span class="header-title">蓝球出现频率分布</span>
+                </div>
+              </template>
+              
+              <div class="chart-container">
+                <div v-if="chartLoading" class="loading-container">
+                  <el-skeleton :rows="6" animated />
+                </div>
+                <div v-show="!chartLoading" ref="blueDistributionChart" class="echarts-container"></div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+        
+        <el-card class="chart-card" shadow="hover" style="margin-top: 20px;">
+          <template #header>
+            <div class="card-header">
+              <span class="header-icon">📈</span>
+              <span class="header-title">和值分布图</span>
+            </div>
+          </template>
+          
+          <div class="chart-container">
+            <div v-if="chartLoading" class="loading-container">
+              <el-skeleton :rows="6" animated />
+            </div>
+            <div v-show="!chartLoading" ref="sumDistributionChart" class="echarts-container"></div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 热力图 -->
+      <div v-if="chartType === 'heatmap'">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span class="header-icon">🔥</span>
+              <span class="header-title">号码出现热力图</span>
+              <div class="chart-info">
+                <el-tag type="info" size="small">最近{{ chartLimit }}期</el-tag>
+              </div>
+            </div>
+          </template>
+          
+          <div class="chart-container">
+            <div v-if="chartLoading" class="loading-container">
+              <el-skeleton :rows="10" animated />
+            </div>
+            <div v-show="!chartLoading" ref="heatmapChart" class="echarts-container-large"></div>
+          </div>
+            
+          <div class="chart-description">
+            <el-alert
+              title="热力图说明"
+              description="颜色越深表示号码出现频率越高。横轴为开奖期号，纵轴为号码。红色区域表示红球，蓝色区域表示蓝球。"
+              type="info"
+              show-icon
+              :closable="false"
+            />
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 趋势线分析 -->
+      <div v-if="chartType === 'trendline'">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span class="header-icon">📉</span>
+              <span class="header-title">号码出现趋势线分析</span>
+              <div class="chart-info">
+                <el-tag type="info" size="small">最近{{ chartLimit }}期</el-tag>
+                <el-tag :type="chartBallType === 'red' ? 'danger' : 'primary'" size="small">
+                  {{ chartBallType === 'red' ? '红球' : '蓝球' }}
+                </el-tag>
+              </div>
+            </div>
+          </template>
+          
+          <div class="chart-container">
+            <div v-if="chartLoading" class="loading-container">
+              <el-skeleton :rows="8" animated />
+            </div>
+            <div v-show="!chartLoading" ref="trendlineChart" class="echarts-container"></div>
+          </div>
+            
+          <div class="chart-description">
+            <el-alert
+              title="趋势线说明"
+              description="显示各号码的出现频率随时间变化的趋势。每条线代表一个号码，Y轴表示累计出现次数，可以观察号码的增长趋势。"
+              type="info"
+              show-icon
+              :closable="false"
+            />
+          </div>
+        </el-card>
+      </div>
     </div>
 
     <!-- 高级分析 -->
@@ -406,10 +612,10 @@
             <el-empty description="暂无此类型的连号数据" />
           </div>
           
-          <el-table v-else :data="getFilteredConsecutivePatterns().slice(0, 20)" stripe>
-            <el-table-column prop="issue" label="期号" width="100" align="center" />
-            <el-table-column prop="draw_date" label="开奖日期" width="110" align="center" />
-            <el-table-column label="红球号码" width="220" align="center">
+          <el-table v-else :data="getFilteredConsecutivePatterns().slice(0, 20)" stripe style="table-layout: fixed;" class="fixed-header-table">
+            <el-table-column prop="issue" label="期号" width="100" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="draw_date" label="开奖日期" width="110" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column label="红球号码" width="220" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <div class="ball-group-compact">
                   <span 
@@ -422,7 +628,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="连号组合" align="center">
+            <el-table-column label="连号组合" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <div class="consecutive-groups">
                   <el-tag 
@@ -437,7 +643,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="连号类型" width="100" align="center">
+            <el-table-column label="连号类型" width="100" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <el-tag 
                   v-for="(group, index) in scope.row.consecutive_groups" 
@@ -532,11 +738,11 @@
             </div>
           </template>
           
-          <el-table :data="Object.entries(acValueData.ac_probability).map(([ac, prob]) => ({ ac_value: ac, probability: prob, count: acValueData.ac_distribution[ac] }))" stripe>
-            <el-table-column prop="ac_value" label="AC值" width="100" align="center" />
-            <el-table-column prop="count" label="出现次数" width="120" align="center" />
-            <el-table-column prop="probability" label="出现概率(%)" width="150" align="center" />
-            <el-table-column label="概率条" align="center">
+          <el-table :data="Object.entries(acValueData.ac_probability).map(([ac, prob]) => ({ ac_value: ac, probability: prob, count: acValueData.ac_distribution[ac] }))" stripe style="table-layout: fixed;" class="fixed-header-table">
+            <el-table-column prop="ac_value" label="AC值" width="100" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="count" label="出现次数" width="120" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column prop="probability" label="出现概率(%)" width="150" align="center" :resizable="false" show-overflow-tooltip />
+            <el-table-column label="概率条" align="center" :resizable="false" show-overflow-tooltip>
               <template #default="scope">
                 <div class="probability-bar">
                   <div 
@@ -735,9 +941,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
+import * as echarts from 'echarts'
 
 // API配置
 const API_BASE_URL = 'http://127.0.0.1:8001'
@@ -765,6 +972,29 @@ const repeatData = ref(null)
 
 // 连号分析筛选
 const consecutiveFilter = ref('all')
+
+// 图表相关数据
+const chartType = ref('trend')
+const chartLimit = ref(50)
+const chartBallType = ref('red')
+const chartLoading = ref(false)
+const chartData = ref(null)
+
+// ECharts 实例
+const trendChart = ref(null)
+const redDistributionChart = ref(null)
+const blueDistributionChart = ref(null)
+const sumDistributionChart = ref(null)
+const heatmapChart = ref(null)
+const trendlineChart = ref(null)
+
+// ECharts 图表实例
+let trendChartInstance = null
+let redDistributionChartInstance = null
+let blueDistributionChartInstance = null
+let sumDistributionChartInstance = null
+let heatmapChartInstance = null
+let trendlineChartInstance = null
 
 // 计算属性
 const hotNumbers = computed(() => {
@@ -1001,10 +1231,566 @@ const getConsecutiveTagType = (group) => {
   return 'info'
 }
 
+// 图表相关方法
+const loadChartData = async () => {
+  chartLoading.value = true
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/v1/results/recent/`, {
+      params: {
+        limit: chartLimit.value
+      }
+    })
+    
+    if (response.data.code === 200 && response.data.data) {
+      chartData.value = response.data.data.results || []
+    } else {
+      chartData.value = []
+      ElMessage.info('暂无图表数据')
+    }
+  } catch (error) {
+    console.error('加载图表数据失败:', error)
+    ElMessage.error('加载图表数据失败，请检查后端服务')
+    chartData.value = []
+  } finally {
+    // 先关闭loading，让容器显示出来
+    chartLoading.value = false
+    
+    // 等待DOM更新和容器显示后再渲染图表
+    await nextTick()
+    setTimeout(() => {
+      renderChart()
+      if (chartData.value.length > 0) {
+        ElMessage.success('图表数据加载成功')
+      }
+    }, 300) // 增加延迟时间确保容器完全就绪
+  }
+}
+
+const renderChart = () => {
+  if (!chartData.value || chartData.value.length === 0) return
+  
+  switch (chartType.value) {
+    case 'trend':
+      renderTrendChart()
+      break
+    case 'distribution':
+      renderDistributionCharts()
+      break
+    case 'heatmap':
+      renderHeatmapChart()
+      break
+    case 'trendline':
+      renderTrendlineChart()
+      break
+  }
+}
+
+const renderTrendChart = () => {
+  if (!trendChart.value) {
+    console.warn('走势图容器不存在，延迟重试')
+    setTimeout(() => renderTrendChart(), 100)
+    return
+  }
+  
+  // 检查容器是否可见和有尺寸
+  const container = trendChart.value
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    console.warn('走势图容器尺寸为0，延迟重试')
+    setTimeout(() => renderTrendChart(), 200)
+    return
+  }
+  
+  // 再检查一下是否在视口中可见
+  const rect = container.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    console.warn('走势图容器在视口中不可见，延迟重试')
+    setTimeout(() => renderTrendChart(), 200)
+    return
+  }
+  
+  if (trendChartInstance) {
+    trendChartInstance.dispose()
+  }
+  
+  trendChartInstance = echarts.init(container)
+  
+  const ballNumbers = chartBallType.value === 'red' 
+    ? Array.from({ length: 33 }, (_, i) => i + 1)
+    : Array.from({ length: 16 }, (_, i) => i + 1)
+  
+  const issues = chartData.value.map(item => item.issue).reverse()
+  
+  const series = ballNumbers.map(ballNum => {
+    const data = issues.map((issue, index) => {
+      const result = chartData.value.find(item => item.issue === issue)
+      if (!result) return [index, ballNum, 0]
+      
+      const balls = chartBallType.value === 'red' 
+        ? [result.red_ball_1, result.red_ball_2, result.red_ball_3, 
+           result.red_ball_4, result.red_ball_5, result.red_ball_6]
+        : [result.blue_ball]
+      
+      return [index, ballNum, balls.includes(ballNum) ? 1 : 0]
+    }).filter(item => item[2] === 1)
+    
+    return {
+      name: `${ballNum}号`,
+      type: 'scatter',
+      data: data,
+      symbolSize: 8,
+      itemStyle: {
+        color: chartBallType.value === 'red' ? '#ff6b6b' : '#4dabf7'
+      }
+    }
+  })
+  
+  const option = {
+    title: {
+      text: `${chartBallType.value === 'red' ? '红球' : '蓝球'}出现走势图`,
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => {
+        const issue = issues[params.data[0]]
+        return `期号: ${issue}<br/>号码: ${params.data[1]}`
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: issues,
+      axisLabel: {
+        rotate: 45,
+        interval: Math.floor(issues.length / 10)
+      }
+    },
+    yAxis: {
+      type: 'value',
+      min: 1,
+      max: chartBallType.value === 'red' ? 33 : 16,
+      interval: chartBallType.value === 'red' ? 3 : 2
+    },
+    series: series
+  }
+  
+  trendChartInstance.setOption(option)
+}
+
+const renderDistributionCharts = () => {
+  renderRedDistributionChart()
+  renderBlueDistributionChart()
+  renderSumDistributionChart()
+}
+
+const renderRedDistributionChart = () => {
+  if (!redDistributionChart.value) {
+    setTimeout(() => renderRedDistributionChart(), 100)
+    return
+  }
+  
+  // 检查容器是否可见和有尺寸
+  const container = redDistributionChart.value
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    setTimeout(() => renderRedDistributionChart(), 200)
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    setTimeout(() => renderRedDistributionChart(), 200)
+    return
+  }
+  
+  if (redDistributionChartInstance) {
+    redDistributionChartInstance.dispose()
+  }
+  
+  redDistributionChartInstance = echarts.init(container)
+  
+  const redBallStats = {}
+  for (let i = 1; i <= 33; i++) {
+    redBallStats[i] = 0
+  }
+  
+  chartData.value.forEach(result => {
+    [result.red_ball_1, result.red_ball_2, result.red_ball_3,
+     result.red_ball_4, result.red_ball_5, result.red_ball_6].forEach(ball => {
+      redBallStats[ball]++
+    })
+  })
+  
+  const option = {
+    title: {
+      text: '红球频率分布',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: Object.keys(redBallStats)
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [{
+      type: 'bar',
+      data: Object.values(redBallStats),
+      itemStyle: {
+        color: '#ff6b6b'
+      }
+    }]
+  }
+  
+  redDistributionChartInstance.setOption(option)
+}
+
+const renderBlueDistributionChart = () => {
+  if (!blueDistributionChart.value) {
+    setTimeout(() => renderBlueDistributionChart(), 100)
+    return
+  }
+  
+  // 检查容器是否可见和有尺寸
+  const container = blueDistributionChart.value
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    setTimeout(() => renderBlueDistributionChart(), 200)
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    setTimeout(() => renderBlueDistributionChart(), 200)
+    return
+  }
+  
+  if (blueDistributionChartInstance) {
+    blueDistributionChartInstance.dispose()
+  }
+  
+  blueDistributionChartInstance = echarts.init(container)
+  
+  const blueBallStats = {}
+  for (let i = 1; i <= 16; i++) {
+    blueBallStats[i] = 0
+  }
+  
+  chartData.value.forEach(result => {
+    blueBallStats[result.blue_ball]++
+  })
+  
+  const option = {
+    title: {
+      text: '蓝球频率分布',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: Object.keys(blueBallStats)
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [{
+      type: 'bar',
+      data: Object.values(blueBallStats),
+      itemStyle: {
+        color: '#4dabf7'
+      }
+    }]
+  }
+  
+  blueDistributionChartInstance.setOption(option)
+}
+
+const renderSumDistributionChart = () => {
+  if (!sumDistributionChart.value) {
+    setTimeout(() => renderSumDistributionChart(), 100)
+    return
+  }
+  
+  // 检查容器是否可见和有尺寸
+  const container = sumDistributionChart.value
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    setTimeout(() => renderSumDistributionChart(), 200)
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    setTimeout(() => renderSumDistributionChart(), 200)
+    return
+  }
+  
+  if (sumDistributionChartInstance) {
+    sumDistributionChartInstance.dispose()
+  }
+  
+  sumDistributionChartInstance = echarts.init(container)
+  
+  const sumStats = {}
+  
+  chartData.value.forEach(result => {
+    const sum = result.red_ball_1 + result.red_ball_2 + result.red_ball_3 +
+                result.red_ball_4 + result.red_ball_5 + result.red_ball_6
+    sumStats[sum] = (sumStats[sum] || 0) + 1
+  })
+  
+  const sortedSums = Object.keys(sumStats).sort((a, b) => parseInt(a) - parseInt(b))
+  
+  const option = {
+    title: {
+      text: '红球和值分布',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: sortedSums
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [{
+      type: 'line',
+      data: sortedSums.map(sum => sumStats[sum]),
+      smooth: true,
+      itemStyle: {
+        color: '#67c23a'
+      },
+      areaStyle: {
+        color: 'rgba(103, 194, 58, 0.3)'
+      }
+    }]
+  }
+  
+  sumDistributionChartInstance.setOption(option)
+}
+
+const renderHeatmapChart = () => {
+  if (!heatmapChart.value) {
+    setTimeout(() => renderHeatmapChart(), 100)
+    return
+  }
+  
+  // 检查容器是否可见和有尺寸
+  const container = heatmapChart.value
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    setTimeout(() => renderHeatmapChart(), 200)
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    setTimeout(() => renderHeatmapChart(), 200)
+    return
+  }
+  
+  if (heatmapChartInstance) {
+    heatmapChartInstance.dispose()
+  }
+  
+  heatmapChartInstance = echarts.init(container)
+  
+  const heatmapData = []
+  
+  chartData.value.forEach((result, issueIndex) => {
+    // 红球数据
+    [result.red_ball_1, result.red_ball_2, result.red_ball_3,
+     result.red_ball_4, result.red_ball_5, result.red_ball_6].forEach(ball => {
+      heatmapData.push([issueIndex, ball - 1, 1])
+    })
+    
+    // 蓝球数据
+    heatmapData.push([issueIndex, 32 + result.blue_ball, 1])
+  })
+  
+  const option = {
+    title: {
+      text: '号码出现热力图',
+      left: 'center'
+    },
+    tooltip: {
+      position: 'top',
+      formatter: (params) => {
+        const issue = chartData.value[params.data[0]]?.issue || ''
+        const ballNum = params.data[1] < 33 ? params.data[1] + 1 : params.data[1] - 32
+        const ballType = params.data[1] < 33 ? '红球' : '蓝球'
+        return `期号: ${issue}<br/>${ballType}: ${ballNum}`
+      }
+    },
+    grid: {
+      height: '60%',
+      top: '10%'
+    },
+    xAxis: {
+      type: 'category',
+      data: chartData.value.map(item => item.issue),
+      splitArea: {
+        show: true
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: [
+        ...Array.from({ length: 33 }, (_, i) => `红${i + 1}`),
+        ...Array.from({ length: 16 }, (_, i) => `蓝${i + 1}`)
+      ],
+      splitArea: {
+        show: true
+      }
+    },
+    visualMap: {
+      min: 0,
+      max: 1,
+      calculable: true,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: '5%',
+      inRange: {
+        color: ['#ffffff', '#ff6b6b']
+      }
+    },
+    series: [{
+      name: '出现次数',
+      type: 'heatmap',
+      data: heatmapData,
+      label: {
+        show: false
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }
+    }]
+  }
+  
+  heatmapChartInstance.setOption(option)
+}
+
+const renderTrendlineChart = () => {
+  if (!trendlineChart.value) {
+    setTimeout(() => renderTrendlineChart(), 100)
+    return
+  }
+  
+  // 检查容器是否可见和有尺寸
+  const container = trendlineChart.value
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    setTimeout(() => renderTrendlineChart(), 200)
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    setTimeout(() => renderTrendlineChart(), 200)
+    return
+  }
+  
+  if (trendlineChartInstance) {
+    trendlineChartInstance.dispose()
+  }
+  
+  trendlineChartInstance = echarts.init(container)
+  
+  const ballNumbers = chartBallType.value === 'red' 
+    ? Array.from({ length: 33 }, (_, i) => i + 1)
+    : Array.from({ length: 16 }, (_, i) => i + 1)
+  
+  const issues = chartData.value.map(item => item.issue).reverse()
+  
+  const series = ballNumbers.slice(0, 10).map(ballNum => { // 只显示前10个号码，避免图表过于拥挤
+    const cumulativeCounts = []
+    let count = 0
+    
+    issues.forEach((issue, index) => {
+      const result = chartData.value.find(item => item.issue === issue)
+      if (result) {
+        const balls = chartBallType.value === 'red' 
+          ? [result.red_ball_1, result.red_ball_2, result.red_ball_3, 
+             result.red_ball_4, result.red_ball_5, result.red_ball_6]
+          : [result.blue_ball]
+        
+        if (balls.includes(ballNum)) {
+          count++
+        }
+      }
+      cumulativeCounts.push(count)
+    })
+    
+    return {
+      name: `${ballNum}号`,
+      type: 'line',
+      data: cumulativeCounts,
+      smooth: true
+    }
+  })
+  
+  const option = {
+    title: {
+      text: `${chartBallType.value === 'red' ? '红球' : '蓝球'}趋势线分析 (前10号码)`,
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis'
+    },
+    legend: {
+      data: series.map(s => s.name),
+      top: 30
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: issues
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: series
+  }
+  
+  trendlineChartInstance.setOption(option)
+}
+
 // 监听筛选条件变化
 watch([ballTypeFilter], () => {
   if (activeTab.value === 'frequency' || activeTab.value === 'hot_cold') {
     loadFrequencyData()
+  }
+})
+
+// 监听图表类型变化
+watch([chartType], () => {
+  if (activeTab.value === 'charts' && chartData.value) {
+    nextTick(() => {
+      // 切换图表类型时也需要延迟，确保新的DOM元素渲染完成
+      setTimeout(() => {
+        renderChart()
+      }, 150)
+    })
   }
 })
 
@@ -1215,7 +2001,8 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
   .page-title {
     font-size: 24px;
   }
@@ -1225,20 +2012,329 @@ onMounted(() => {
   }
   
   .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 10px;
   }
   
-  .overview-item {
-    padding: 15px;
+  .echarts-container {
+    height: 350px;
+  }
+  
+  .echarts-container-large {
+    height: 500px;
+  }
+  
+  .analysis-card {
+    height: 180px;
+    margin-bottom: 15px;
+  }
+  
+  .stat-value {
+    font-size: 30px;
   }
   
   .overview-icon {
-    font-size: 28px;
+    font-size: 32px;
   }
   
   .overview-value {
+    font-size: 22px;
+  }
+  
+  .ball {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  
+  .red-ball-small {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+}
+
+/* 移动端适配 (< 768px) */
+@media (max-width: 768px) {
+  .page-title {
     font-size: 20px;
+    text-align: center;
+  }
+  
+  .title-icon {
+    font-size: 24px;
+  }
+  
+  .page-description {
+    font-size: 14px;
+  }
+  
+  .filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .el-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+  
+  .el-radio-button {
+    flex: 1;
+    min-width: calc(50% - 2.5px);
+  }
+  
+  .overview-item {
+    padding: 12px;
+    text-align: center;
+  }
+  
+  .overview-icon {
+    font-size: 24px;
+  }
+  
+  .overview-value {
+    font-size: 18px;
+  }
+  
+  .overview-title {
+    font-size: 12px;
+  }
+  
+  .ball {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+  
+  .red-ball-small {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+  
+  .echarts-container {
+    height: 250px;
+  }
+  
+  .echarts-container-large {
+    height: 350px;
+  }
+  
+  .analysis-card {
+    height: 160px;
+    margin-bottom: 15px;
+  }
+  
+  .analysis-card .el-card__header {
+    padding: 10px 15px;
+    min-height: 50px;
+    max-height: 70px;
+  }
+  
+  .analysis-card .el-card__body {
+    height: calc(100% - 70px);
+  }
+  
+  .analysis-stat {
+    padding: 10px 15px 30px 15px;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+  }
+  
+  .stat-desc {
+    font-size: 12px;
+  }
+  
+  .header-title {
+    font-size: 13px;
+  }
+  
+  .header-icon {
+    font-size: 16px;
+  }
+  
+  .number-item {
+    padding: 8px;
+    margin-bottom: 6px;
+  }
+  
+  .rank {
+    font-size: 14px;
+    margin-right: 10px;
+    min-width: 18px;
+  }
+  
+  .count {
+    font-size: 12px;
+  }
+  
+  .frequency-bar {
+    height: 20px;
+    padding: 0 6px;
+  }
+  
+  .frequency-text {
+    font-size: 10px;
+  }
+  
+  .parameter-group {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  
+  .parameter-label {
+    min-width: auto;
+    font-size: 14px;
+  }
+  
+  .parameter-desc {
+    font-size: 11px;
+    margin-top: 5px;
+  }
+  
+  .chart-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .click-hint {
+    font-size: 10px;
+    bottom: 10px;
+  }
+}
+
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 18px;
+  }
+  
+  .title-icon {
+    font-size: 20px;
+  }
+  
+  .page-description {
+    font-size: 12px;
+  }
+  
+  .el-radio-button {
+    font-size: 12px;
+    padding: 8px 4px;
+  }
+  
+  .overview-item {
+    padding: 10px;
+  }
+  
+  .overview-icon {
+    font-size: 20px;
+  }
+  
+  .overview-value {
+    font-size: 16px;
+  }
+  
+  .overview-title {
+    font-size: 11px;
+  }
+  
+  .ball {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+  
+  .red-ball-small {
+    width: 18px;
+    height: 18px;
+    font-size: 8px;
+  }
+  
+  .echarts-container {
+    height: 200px;
+  }
+  
+  .echarts-container-large {
+    height: 300px;
+  }
+  
+  .analysis-card {
+    height: 140px;
+    margin-bottom: 10px;
+  }
+  
+  .analysis-card .el-card__header {
+    padding: 8px 12px;
+    min-height: 45px;
+    max-height: 60px;
+  }
+  
+  .analysis-card .el-card__body {
+    height: calc(100% - 60px);
+  }
+  
+  .analysis-stat {
+    padding: 8px 12px 25px 12px;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+  }
+  
+  .stat-desc {
+    font-size: 11px;
+  }
+  
+  .header-title {
+    font-size: 12px;
+  }
+  
+  .header-icon {
+    font-size: 14px;
+  }
+  
+  .number-item {
+    padding: 6px;
+    margin-bottom: 4px;
+  }
+  
+  .rank {
+    font-size: 12px;
+    margin-right: 8px;
+    min-width: 16px;
+  }
+  
+  .count {
+    font-size: 11px;
+  }
+  
+  .frequency-bar {
+    height: 18px;
+    padding: 0 4px;
+  }
+  
+  .frequency-text {
+    font-size: 9px;
+  }
+  
+  .parameter-label {
+    font-size: 13px;
+  }
+  
+  .parameter-desc {
+    font-size: 10px;
+  }
+  
+  .click-hint {
+    font-size: 9px;
+    bottom: 8px;
   }
 }
 
@@ -1440,6 +2536,37 @@ onMounted(() => {
   color: #909399;
 }
 
+/* 图表相关样式 */
+.chart-card {
+  margin-bottom: 20px;
+  border-radius: 12px;
+}
+
+.chart-container {
+  padding: 20px;
+}
+
+.echarts-container {
+  width: 100%;
+  height: 400px;
+}
+
+.echarts-container-large {
+  width: 100%;
+  height: 600px;
+}
+
+.chart-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.chart-description {
+  margin-top: 15px;
+  padding: 0 20px 20px 20px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .parameter-group {
@@ -1454,6 +2581,20 @@ onMounted(() => {
   .card-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+  
+  .echarts-container {
+    height: 300px;
+  }
+  
+  .echarts-container-large {
+    height: 400px;
+  }
+  
+  .chart-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
   }
 }
 </style> 

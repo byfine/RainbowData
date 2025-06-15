@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import { 
@@ -10,7 +10,8 @@ import {
   User,
   UserFilled,
   ArrowDown,
-  SwitchButton
+  SwitchButton,
+  Monitor
 } from '@element-plus/icons-vue'
 
 // 导入组件
@@ -21,6 +22,7 @@ import PredictionComponent from './components/PredictionComponent.vue'
 import LoginComponent from './components/LoginComponent.vue'
 import RegisterComponent from './components/RegisterComponent.vue'
 import UserProfileComponent from './components/UserProfileComponent.vue'
+import CrawlerComponent from './components/CrawlerComponent.vue'
 
 // 响应式数据
 const activeIndex = ref('home')
@@ -28,6 +30,68 @@ const isAuthenticated = ref(false)
 const currentUser = ref(null)
 const showAuthDialog = ref(false)
 const authMode = ref('login') // 'login' 或 'register'
+const hasAdminPermission = ref(false)
+
+// 页面标题映射
+const pageTitleMap = {
+  'home': '首页',
+  'history': '历史开奖',
+  'statistics': '统计分析',
+  'prediction': '娱乐预测',
+  'crawler': '爬虫管理',
+  'profile': '个人中心'
+}
+
+// 更新页面标题
+const updatePageTitle = (page) => {
+  const pageTitle = pageTitleMap[page] || '首页'
+  document.title = `${pageTitle} - 彩虹数据`
+}
+
+// 强制显示所有菜单项的函数
+const forceShowAllMenuItems = () => {
+  nextTick(() => {
+    // 多种选择器确保找到所有菜单项
+    const selectors = [
+      '.el-menu-demo .el-menu-item',
+      '.el-menu--horizontal .el-menu-item',
+      '.el-menu.el-menu--horizontal .el-menu-item'
+    ]
+    
+    selectors.forEach(selector => {
+      const menuItems = document.querySelectorAll(selector)
+      menuItems.forEach((item, index) => {
+        // 强制设置显示样式
+        item.style.setProperty('display', 'flex', 'important')
+        item.style.setProperty('visibility', 'visible', 'important')
+        item.style.setProperty('opacity', '1', 'important')
+        item.style.setProperty('position', 'static', 'important')
+        item.style.setProperty('transform', 'none', 'important')
+        item.style.setProperty('left', 'auto', 'important')
+        item.style.setProperty('right', 'auto', 'important')
+        item.style.setProperty('top', 'auto', 'important')
+        item.style.setProperty('bottom', 'auto', 'important')
+        item.style.setProperty('width', 'auto', 'important')
+        item.style.setProperty('height', 'auto', 'important')
+        item.style.setProperty('max-width', 'none', 'important')
+        item.style.setProperty('overflow', 'visible', 'important')
+        
+        // 移除可能的隐藏类
+        item.classList.remove('hidden', 'collapse', 'el-menu-item--hidden')
+      })
+    })
+    
+    // 额外检查：如果还有隐藏的菜单项，再次强制显示
+    setTimeout(() => {
+      const hiddenItems = document.querySelectorAll('.el-menu-demo .el-menu-item[style*="display: none"], .el-menu-demo .el-menu-item[style*="visibility: hidden"]')
+      hiddenItems.forEach(item => {
+        item.style.setProperty('display', 'flex', 'important')
+        item.style.setProperty('visibility', 'visible', 'important')
+        item.style.setProperty('opacity', '1', 'important')
+      })
+    }, 100)
+  })
+}
 
 // 方法
 const handleSelect = (key) => {
@@ -37,6 +101,10 @@ const handleSelect = (key) => {
     return
   }
   activeIndex.value = key
+  // 更新页面标题
+  updatePageTitle(key)
+  // 页面切换后强制显示所有菜单项
+  forceShowAllMenuItems()
 }
 
 const handleNavigate = (page) => {
@@ -46,6 +114,10 @@ const handleNavigate = (page) => {
     return
   }
   activeIndex.value = page
+  // 更新页面标题
+  updatePageTitle(page)
+  // 页面切换后强制显示所有菜单项
+  forceShowAllMenuItems()
 }
 
 const handleLogin = () => {
@@ -72,6 +144,8 @@ const handleLogout = async () => {
     isAuthenticated.value = false
     currentUser.value = null
     activeIndex.value = 'home'
+    // 更新页面标题
+    updatePageTitle('home')
     
     ElMessage.success('已成功退出登录')
   } catch (error) {
@@ -83,11 +157,13 @@ const handleLogout = async () => {
     isAuthenticated.value = false
     currentUser.value = null
     activeIndex.value = 'home'
+    // 更新页面标题
+    updatePageTitle('home')
     ElMessage.success('已退出登录')
   }
 }
 
-const onLoginSuccess = ({ user, token }) => {
+const onLoginSuccess = async ({ user, token }) => {
   // 保存用户信息和Token
   localStorage.setItem('user', JSON.stringify(user))
   localStorage.setItem('token', token)
@@ -97,6 +173,9 @@ const onLoginSuccess = ({ user, token }) => {
   isAuthenticated.value = true
   currentUser.value = user
   showAuthDialog.value = false
+  
+  // 检查权限
+  await checkUserPermissions()
   
   ElMessage.success(`欢迎回来，${user.username}！`)
 }
@@ -113,12 +192,33 @@ const switchAuthMode = (mode) => {
 const handleUserCommand = (command) => {
   if (command === 'profile') {
     activeIndex.value = 'profile'
+    updatePageTitle('profile')
+    forceShowAllMenuItems()
+  } else if (command === 'crawler') {
+    activeIndex.value = 'crawler'
+    updatePageTitle('crawler')
+    forceShowAllMenuItems()
   } else if (command === 'logout') {
     handleLogout()
   }
 }
 
-const checkAuthStatus = () => {
+const checkUserPermissions = async () => {
+  try {
+    const response = await axios.get('http://127.0.0.1:8001/api/v1/user/permissions/')
+    console.log('权限检查响应:', response.data)
+    // 修复权限检查逻辑，使用正确的API响应格式
+    const permissionData = response.data.data || {}
+    hasAdminPermission.value = permissionData.can_manage_crawler || false
+    console.log('爬虫管理权限:', hasAdminPermission.value)
+  } catch (error) {
+    console.error('权限检查失败:', error)
+    // 权限检查失败时，默认为无权限，确保安全
+    hasAdminPermission.value = false
+  }
+}
+
+const checkAuthStatus = async () => {
   const token = localStorage.getItem('token')
   const userStr = localStorage.getItem('user')
   
@@ -128,6 +228,7 @@ const checkAuthStatus = () => {
       axios.defaults.headers.common['Authorization'] = `Token ${token}`
       isAuthenticated.value = true
       currentUser.value = user
+      await checkUserPermissions()
     } catch (error) {
       console.error('解析用户信息失败:', error)
       localStorage.removeItem('user')
@@ -137,9 +238,32 @@ const checkAuthStatus = () => {
 }
 
 // 组件挂载时
-onMounted(() => {
+onMounted(async () => {
   console.log('🌈 彩虹数据应用已启动')
-  checkAuthStatus()
+  await checkAuthStatus()
+  // 设置初始页面标题
+  updatePageTitle(activeIndex.value)
+  // 确保菜单项正确显示
+  forceShowAllMenuItems()
+  
+  // 设置定时器持续检查菜单项显示状态
+  setInterval(() => {
+    const hiddenItems = document.querySelectorAll('.el-menu-demo .el-menu-item[style*="display: none"], .el-menu-demo .el-menu-item[style*="visibility: hidden"]')
+    if (hiddenItems.length > 0) {
+      console.log('发现隐藏的菜单项，强制显示')
+      forceShowAllMenuItems()
+    }
+  }, 1000)
+})
+
+// 监听activeIndex变化，更新页面标题并确保菜单项始终显示
+watch(activeIndex, (newValue) => {
+  updatePageTitle(newValue)
+  forceShowAllMenuItems()
+  // 延迟再次检查
+  setTimeout(() => {
+    forceShowAllMenuItems()
+  }, 200)
 })
 </script>
 
@@ -179,10 +303,7 @@ onMounted(() => {
             <el-icon><MagicStick /></el-icon>
             <span>娱乐预测</span>
           </el-menu-item>
-          <el-menu-item v-if="isAuthenticated" index="profile">
-            <el-icon><UserFilled /></el-icon>
-            <span>个人中心</span>
-          </el-menu-item>
+
         </el-menu>
         
         <!-- 用户认证区域 -->
@@ -210,6 +331,10 @@ onMounted(() => {
                     <el-icon><User /></el-icon>
                     个人中心
                   </el-dropdown-item>
+                  <el-dropdown-item v-if="hasAdminPermission" command="crawler">
+                    <el-icon><Monitor /></el-icon>
+                    爬虫管理
+                  </el-dropdown-item>
                   <el-dropdown-item command="logout" divided>
                     <el-icon><SwitchButton /></el-icon>
                     退出登录
@@ -232,7 +357,7 @@ onMounted(() => {
         
         <!-- 历史开奖页面 -->
         <div v-if="activeIndex === 'history'" class="page-content">
-          <HistoryComponent />
+          <HistoryComponent :is-authenticated="isAuthenticated" />
         </div>
         
         <!-- 统计分析页面 -->
@@ -246,6 +371,11 @@ onMounted(() => {
             @show-login="handleLogin"
             @show-register="handleRegister"
           />
+        </div>
+        
+        <!-- 爬虫管理页面 -->
+        <div v-if="activeIndex === 'crawler'" class="page-content">
+          <CrawlerComponent />
         </div>
         
         <!-- 个人中心页面 -->
@@ -295,12 +425,52 @@ onMounted(() => {
 
 <style scoped>
 /* 全局样式 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
 #app {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #2c3e50;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* 确保所有页面内容宽度一致 */
+* {
+  box-sizing: border-box;
+}
+
+/* 隐藏不必要的滚动条 */
+body {
+  overflow-x: hidden;
+}
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 /* 头部样式 */
@@ -317,6 +487,15 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
+  min-height: 60px;
+}
+
+/* 确保导航菜单有足够空间 */
+.header-content .el-menu-demo {
+  flex: 1;
+  max-width: none;
+  justify-content: center;
+  margin: 0 20px;
 }
 
 .logo {
@@ -339,6 +518,68 @@ onMounted(() => {
 .el-menu-demo {
   background-color: transparent !important;
   border-bottom: none;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+}
+
+/* 最强力的菜单项显示控制 */
+.el-menu-demo,
+.el-menu--horizontal,
+.el-menu.el-menu--horizontal {
+  overflow: visible !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  position: relative !important;
+  max-width: none !important;
+}
+
+/* 强制显示所有菜单项 - 覆盖所有可能的隐藏 */
+.el-menu-demo .el-menu-item,
+.el-menu--horizontal .el-menu-item,
+.el-menu.el-menu--horizontal .el-menu-item {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  position: static !important;
+  z-index: 10 !important;
+  max-width: none !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* 针对具体的菜单项索引强制显示 */
+.el-menu-demo > .el-menu-item:nth-child(1),
+.el-menu-demo > .el-menu-item:nth-child(2), 
+.el-menu-demo > .el-menu-item:nth-child(3),
+.el-menu-demo > .el-menu-item:nth-child(4) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: static !important;
+  transform: none !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+}
+
+/* 覆盖Element Plus可能的响应式隐藏逻辑 */
+.el-menu--horizontal .el-menu-item[style],
+.el-menu-demo .el-menu-item[style] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* 防止菜单项被任何方式隐藏 */
+.el-menu-demo .el-menu-item[class*="hidden"],
+.el-menu-demo .el-menu-item[class*="collapse"] {
+  display: flex !important;
+  visibility: visible !important;
 }
 
 /* 认证区域样式 */
@@ -372,6 +613,8 @@ onMounted(() => {
   padding: 8px 12px;
   border-radius: 4px;
   transition: background-color 0.3s;
+  color: white !important;
+  font-weight: 500;
 }
 
 .user-dropdown:hover {
@@ -387,16 +630,22 @@ onMounted(() => {
   margin-right: 0;
 }
 
-/* 主要内容样式 */
+/* 主要内容样式 - 统一宽度 */
 .main-container {
   flex: 1;
   background-color: #f5f7fa;
+  width: 100vw;
+  max-width: 100%;
+  min-height: calc(100vh - 120px);
+  overflow-x: hidden;
 }
 
 .main-content {
   max-width: 1200px;
+  width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  box-sizing: border-box;
 }
 
 .page-content {
@@ -404,6 +653,17 @@ onMounted(() => {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 600px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+/* 确保所有页面内容容器宽度一致 */
+.page-content > * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* 底部样式 */
@@ -430,33 +690,170 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .header-content {
+    padding: 0 15px;
+  }
+  
+  .logo-text {
+    font-size: 20px;
+  }
+  
+  .logo-icon {
+    font-size: 28px;
+  }
+  
+  .main-content {
+    width: 95%;
+    max-width: 1024px;
+    padding: 15px;
+  }
+  
+  .page-content {
+    padding: 15px;
+    max-width: 100%;
+  }
+}
+
+/* 移动端适配 (< 768px) */
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
     padding: 10px;
+    align-items: stretch;
   }
   
   .logo {
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+    font-size: 20px;
+  }
+  
+  .logo-icon {
+    font-size: 24px;
+  }
+  
+  .logo-text {
+    font-size: 18px;
+  }
+  
+  .el-menu-demo {
+    justify-content: center;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+  
+  .el-menu-demo .el-menu-item {
+    padding: 0 12px;
+    font-size: 13px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    display: flex !important;
+    visibility: visible !important;
   }
   
   .auth-section {
     margin-left: 0;
-    margin-top: 10px;
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .auth-buttons {
+    gap: 8px;
+  }
+  
+  .auth-btn {
+    padding: 6px 12px;
+    font-size: 14px;
   }
   
   .main-content {
+    width: 95%;
+    max-width: 768px;
     padding: 10px;
+  }
+  
+  .page-content {
+    padding: 15px;
+    border-radius: 6px;
+    max-width: 100%;
+  }
+  
+  .footer-content p {
+    font-size: 12px;
+    margin: 6px 0;
+  }
+  
+  .disclaimer {
+    font-size: 11px;
+  }
+  
+  .tech-info {
+    font-size: 10px;
   }
 }
 
-@media (max-width: 992px) {
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
   .header-content {
-    flex-wrap: wrap;
+    padding: 8px;
   }
   
-  .auth-section {
-    margin-left: auto;
+  .logo {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .logo-icon {
+    font-size: 20px;
+  }
+  
+  .el-menu-demo {
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .el-menu-demo::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .el-menu-demo .el-menu-item {
+    padding: 0 8px;
+    font-size: 11px;
+    flex-shrink: 0;
+    min-width: auto;
+    display: flex !important;
+    visibility: visible !important;
+  }
+  
+  .auth-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  
+  .main-content {
+    padding: 8px;
+  }
+  
+  .page-content {
+    padding: 12px;
+    border-radius: 4px;
+  }
+}
+
+/* 大屏幕优化 (> 1200px) */
+@media (min-width: 1200px) {
+  .header-content {
+    max-width: 1400px;
+  }
+  
+  .main-content {
+    max-width: 1400px;
   }
 }
 </style>

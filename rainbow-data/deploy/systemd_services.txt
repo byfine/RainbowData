@@ -1,0 +1,155 @@
+# 彩虹数据 (RainbowData) Systemd服务配置文件
+# 用途：系统服务管理，自动启动和监控
+# 版本：v1.0
+
+# ==========================================
+# 1. Django Gunicorn服务
+# 文件：/etc/systemd/system/rainbow-data-gunicorn.service
+# ==========================================
+[Unit]
+Description=彩虹数据 Django Gunicorn服务
+After=network.target mysql.service redis.service
+Wants=mysql.service redis.service
+
+[Service]
+Type=notify
+User=rainbowdata
+Group=rainbowdata
+WorkingDirectory=/var/www/rainbow-data/backend
+ExecStart=/var/www/rainbow-data/backend/venv/bin/gunicorn rainbow_data.wsgi:application -c /var/www/rainbow-data/backend/gunicorn_config.py
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+PIDFile=/var/run/rainbow-data/gunicorn.pid
+
+# 重启配置
+Restart=always
+RestartSec=3
+
+# 环境变量
+Environment=DJANGO_SETTINGS_MODULE=rainbow_data.settings.production
+Environment=PYTHONPATH=/var/www/rainbow-data/backend
+
+# 日志配置
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rainbow-data-gunicorn
+
+[Install]
+WantedBy=multi-user.target
+
+# ==========================================
+# 2. Celery Worker服务
+# 文件：/etc/systemd/system/rainbow-data-celery-worker.service
+# ==========================================
+[Unit]
+Description=彩虹数据 Celery Worker服务
+After=network.target redis.service mysql.service
+Wants=redis.service mysql.service
+
+[Service]
+Type=forking
+User=rainbowdata
+Group=rainbowdata
+WorkingDirectory=/var/www/rainbow-data/backend
+ExecStart=/var/www/rainbow-data/backend/venv/bin/celery multi start worker1 \
+  -A rainbow_data \
+  --pidfile=/var/run/rainbow-data/celery-worker-%n.pid \
+  --logfile=/var/log/rainbow-data/celery-worker-%n.log \
+  --loglevel=INFO \
+  --concurrency=4
+ExecStop=/var/www/rainbow-data/backend/venv/bin/celery multi stopwait worker1 \
+  --pidfile=/var/run/rainbow-data/celery-worker-%n.pid
+ExecReload=/var/www/rainbow-data/backend/venv/bin/celery multi restart worker1 \
+  -A rainbow_data \
+  --pidfile=/var/run/rainbow-data/celery-worker-%n.pid \
+  --logfile=/var/log/rainbow-data/celery-worker-%n.log \
+  --loglevel=INFO \
+  --concurrency=4
+
+# 重启配置
+Restart=always
+RestartSec=10
+
+# 环境变量
+Environment=DJANGO_SETTINGS_MODULE=rainbow_data.settings.production
+Environment=PYTHONPATH=/var/www/rainbow-data/backend
+Environment=C_FORCE_ROOT=1
+
+# 资源限制
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+# ==========================================
+# 3. Celery Beat定时任务服务
+# 文件：/etc/systemd/system/rainbow-data-celery-beat.service
+# ==========================================
+[Unit]
+Description=彩虹数据 Celery Beat定时任务服务
+After=network.target redis.service mysql.service
+Wants=redis.service mysql.service
+
+[Service]
+Type=simple
+User=rainbowdata
+Group=rainbowdata
+WorkingDirectory=/var/www/rainbow-data/backend
+ExecStart=/var/www/rainbow-data/backend/venv/bin/celery -A rainbow_data beat \
+  --pidfile=/var/run/rainbow-data/celery-beat.pid \
+  --logfile=/var/log/rainbow-data/celery-beat.log \
+  --loglevel=INFO \
+  --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+# 重启配置
+Restart=always
+RestartSec=5
+
+# 环境变量
+Environment=DJANGO_SETTINGS_MODULE=rainbow_data.settings.production
+Environment=PYTHONPATH=/var/www/rainbow-data/backend
+
+# PID文件
+PIDFile=/var/run/rainbow-data/celery-beat.pid
+
+[Install]
+WantedBy=multi-user.target
+
+# ==========================================
+# 服务管理命令
+# ==========================================
+
+# 安装服务文件后执行：
+# sudo systemctl daemon-reload
+
+# 启动服务：
+# sudo systemctl start rainbow-data-gunicorn
+# sudo systemctl start rainbow-data-celery-worker
+# sudo systemctl start rainbow-data-celery-beat
+
+# 设置开机自启：
+# sudo systemctl enable rainbow-data-gunicorn
+# sudo systemctl enable rainbow-data-celery-worker
+# sudo systemctl enable rainbow-data-celery-beat
+
+# 查看服务状态：
+# sudo systemctl status rainbow-data-gunicorn
+# sudo systemctl status rainbow-data-celery-worker
+# sudo systemctl status rainbow-data-celery-beat
+
+# 查看服务日志：
+# sudo journalctl -u rainbow-data-gunicorn -f
+# sudo journalctl -u rainbow-data-celery-worker -f
+# sudo journalctl -u rainbow-data-celery-beat -f
+
+# 重启服务：
+# sudo systemctl restart rainbow-data-gunicorn
+# sudo systemctl restart rainbow-data-celery-worker
+# sudo systemctl restart rainbow-data-celery-beat
+
+# 停止服务：
+# sudo systemctl stop rainbow-data-gunicorn
+# sudo systemctl stop rainbow-data-celery-worker
+# sudo systemctl stop rainbow-data-celery-beat 

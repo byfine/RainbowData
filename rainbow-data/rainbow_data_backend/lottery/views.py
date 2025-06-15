@@ -16,13 +16,19 @@ import uuid
 import logging
 from django.core.management import call_command
 
-from .models import LotteryResult, Statistics, Prediction, UserAnalysisLog, UserProfile, DataSource, CrawlLog
+from .models import LotteryResult, Statistics, Prediction, UserAnalysisLog, UserProfile, DataSource, CrawlLog, UserFavorite
 from .serializers import (
     LotteryResultSerializer, LotteryResultCreateSerializer,
     StatisticsSerializer, PredictionSerializer, PredictionCreateSerializer,
     UserAnalysisLogSerializer, UserSerializer, UserRegistrationSerializer,
     UserLoginSerializer, ChangePasswordSerializer, UserProfileSerializer,
-    DataSourceSerializer, DataSourceCreateSerializer, CrawlLogSerializer, CrawlLogCreateSerializer
+    DataSourceSerializer, DataSourceCreateSerializer, CrawlLogSerializer, CrawlLogCreateSerializer,
+    UserFavoriteSerializer, UserFavoriteCreateSerializer
+)
+from .permissions import (
+    IsNormalUser, IsAdminUser, IsCrawlerManager, IsDataSourceManager,
+    IsOwnerOrAdmin, IsReadOnlyOrAdmin, CanViewCrawlerLogs,
+    get_user_permissions, check_crawler_permission, check_admin_permission, ensure_user_profile
 )
 
 
@@ -329,6 +335,20 @@ class StatisticsViewSet(viewsets.ModelViewSet):
                 'four_consecutive': round(consecutive_stats['four_consecutive'] / limit * 100, 2)
             }
             
+            # 记录用户分析日志
+            if request.user.is_authenticated:
+                try:
+                    user_profile = request.user.userprofile
+                    UserAnalysisLog.objects.create(
+                        user_profile=user_profile,
+                        analysis_type='consecutive',
+                        parameters={'limit': limit},
+                        result_summary=f'分析了{limit}期数据，发现两连号{consecutive_stats["two_consecutive"]}次'
+                    )
+                except Exception as log_error:
+                    # 日志记录失败不影响主要功能
+                    print(f'记录分析日志失败: {log_error}')
+            
             return Response({
                 'code': 200,
                 'message': '连号分析完成',
@@ -402,6 +422,19 @@ class StatisticsViewSet(viewsets.ModelViewSet):
             for ac_val, count in ac_stats['ac_distribution'].items():
                 ac_stats['ac_probability'][ac_val] = round(count / limit * 100, 2)
             
+            # 记录用户分析日志
+            if request.user.is_authenticated:
+                try:
+                    user_profile = request.user.userprofile
+                    UserAnalysisLog.objects.create(
+                        user_profile=user_profile,
+                        analysis_type='ac_value',
+                        parameters={'limit': limit},
+                        result_summary=f'分析了{limit}期数据，平均AC值{ac_stats["average_ac"]}'
+                    )
+                except Exception as log_error:
+                    print(f'记录分析日志失败: {log_error}')
+            
             return Response({
                 'code': 200,
                 'message': 'AC值分析完成',
@@ -468,6 +501,19 @@ class StatisticsViewSet(viewsets.ModelViewSet):
             span_stats['span_probability'] = {}
             for span_val, count in span_stats['span_distribution'].items():
                 span_stats['span_probability'][span_val] = round(count / limit * 100, 2)
+            
+            # 记录用户分析日志
+            if request.user.is_authenticated:
+                try:
+                    user_profile = request.user.userprofile
+                    UserAnalysisLog.objects.create(
+                        user_profile=user_profile,
+                        analysis_type='span',
+                        parameters={'limit': limit},
+                        result_summary=f'分析了{limit}期数据，平均跨度{span_stats["average_span"]}'
+                    )
+                except Exception as log_error:
+                    print(f'记录分析日志失败: {log_error}')
             
             return Response({
                 'code': 200,
@@ -574,6 +620,19 @@ class StatisticsViewSet(viewsets.ModelViewSet):
             else:
                 interval_stats['min_interval'] = 0
             
+            # 记录用户分析日志
+            if request.user.is_authenticated:
+                try:
+                    user_profile = request.user.userprofile
+                    UserAnalysisLog.objects.create(
+                        user_profile=user_profile,
+                        analysis_type='interval',
+                        parameters={'ball_type': ball_type, 'ball_number': ball_number, 'limit': limit},
+                        result_summary=f'分析了{ball_type}球{ball_number}号在{limit}期内的间隔，出现{interval_stats["appear_count"]}次'
+                    )
+                except Exception as log_error:
+                    print(f'记录分析日志失败: {log_error}')
+            
             return Response({
                 'code': 200,
                 'message': '间隔期数分析完成',
@@ -661,6 +720,19 @@ class StatisticsViewSet(viewsets.ModelViewSet):
                 'more_balls_repeat': round(repeat_stats['repeat_patterns']['more_balls_repeat'] / total_comparisons * 100, 2)
             }
             
+            # 记录用户分析日志
+            if request.user.is_authenticated:
+                try:
+                    user_profile = request.user.userprofile
+                    UserAnalysisLog.objects.create(
+                        user_profile=user_profile,
+                        analysis_type='repeat',
+                        parameters={'limit': limit},
+                        result_summary=f'分析了{limit}期数据，发现{len(repeat_stats["repeat_details"])}次重复号码情况'
+                    )
+                except Exception as log_error:
+                    print(f'记录分析日志失败: {log_error}')
+            
             return Response({
                 'code': 200,
                 'message': '重复号码分析完成',
@@ -679,7 +751,7 @@ class PredictionViewSet(viewsets.ModelViewSet):
     """预测记录API视图集"""
     queryset = Prediction.objects.all()
     serializer_class = PredictionSerializer
-    permission_classes = [AllowAny]  # 改为允许匿名访问
+    permission_classes = [AllowAny]  # 保持允许匿名访问，在queryset中控制权限
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['algorithm', 'target_issue', 'is_accurate']
     ordering_fields = ['created_at', 'confidence', 'accuracy_score']
@@ -717,28 +789,26 @@ class PredictionViewSet(viewsets.ModelViewSet):
                     'data': None
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # 简单的娱乐预测算法（占位实现）
+            # 娱乐预测算法实现
             import random
+            import numpy as np
+            from datetime import datetime, timedelta
+            from django.utils import timezone
+            from collections import Counter
+            from sklearn.linear_model import LinearRegression
             
-            if algorithm == 'frequency':
-                # 频率统计预测 - 选择出现频率较高的号码
-                red_stats = Statistics.objects.filter(ball_type='red').order_by('-appear_count')[:15]
-                blue_stats = Statistics.objects.filter(ball_type='blue').order_by('-appear_count')[:8]
-                
-                if red_stats.count() >= 6 and blue_stats.count() >= 1:
-                    predicted_red = sorted(random.sample([s.ball_number for s in red_stats], 6))
-                    predicted_blue = random.choice([s.ball_number for s in blue_stats])
-                    confidence = 0.15  # 娱乐性预测，置信度较低
-                else:
-                    # 如果统计数据不足，使用随机数
-                    predicted_red = sorted(random.sample(range(1, 34), 6))
-                    predicted_blue = random.randint(1, 16)
-                    confidence = 0.05
-            else:
-                # 其他算法暂时使用随机数
-                predicted_red = sorted(random.sample(range(1, 34), 6))
-                predicted_blue = random.randint(1, 16)
-                confidence = 0.05
+            predicted_red, predicted_blue, confidence = self._generate_prediction_by_algorithm(algorithm)
+            
+            # 确保红球号码在有效范围内且不重复
+            predicted_red = sorted(list(set(predicted_red)))[:6]
+            while len(predicted_red) < 6:
+                new_ball = random.randint(1, 33)
+                if new_ball not in predicted_red:
+                    predicted_red.append(new_ball)
+            predicted_red = sorted(predicted_red)
+            
+            # 确保蓝球在有效范围内
+            predicted_blue = max(1, min(16, predicted_blue))
             
             # 准备预测数据
             prediction_data = {
@@ -823,18 +893,21 @@ class PredictionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def accuracy(self, request):
-        """算法准确率统计"""
+        """算法准确率统计 - 改进版"""
         try:
             algorithm = request.query_params.get('algorithm')
             
+            # 获取所有预测记录（不限制用户），用于全局统计
+            all_predictions = Prediction.objects.all()
+            
             if algorithm:
-                queryset = self.queryset.filter(algorithm=algorithm)
+                filtered_predictions = all_predictions.filter(algorithm=algorithm)
             else:
-                queryset = self.queryset.all()
+                filtered_predictions = all_predictions
             
             # 计算统计信息
-            total_predictions = queryset.count()
-            accurate_predictions = queryset.filter(is_accurate=True).count()
+            total_predictions = filtered_predictions.count()
+            accurate_predictions = filtered_predictions.filter(is_accurate=True).count()
             
             if total_predictions > 0:
                 accuracy_rate = (accurate_predictions / total_predictions) * 100
@@ -845,30 +918,75 @@ class PredictionViewSet(viewsets.ModelViewSet):
             algorithm_stats = []
             for algo_choice in Prediction.ALGORITHM_CHOICES:
                 algo_code, algo_name = algo_choice
-                algo_queryset = self.queryset.filter(algorithm=algo_code)
+                algo_queryset = all_predictions.filter(algorithm=algo_code)
                 algo_total = algo_queryset.count()
                 algo_accurate = algo_queryset.filter(is_accurate=True).count()
                 algo_accuracy = (algo_accurate / algo_total * 100) if algo_total > 0 else 0
+                
+                # 计算平均置信度
+                avg_confidence = 0
+                if algo_total > 0:
+                    confidence_values = [float(p.confidence) for p in algo_queryset if p.confidence is not None]
+                    if confidence_values:
+                        avg_confidence = sum(confidence_values) / len(confidence_values)
+                
+                # 计算平均准确率得分
+                avg_accuracy_score = 0
+                if algo_total > 0:
+                    score_values = [float(p.accuracy_score) for p in algo_queryset if p.accuracy_score is not None]
+                    if score_values:
+                        avg_accuracy_score = sum(score_values) / len(score_values)
                 
                 algorithm_stats.append({
                     'algorithm': algo_code,
                     'algorithm_name': algo_name,
                     'total_predictions': algo_total,
                     'accurate_predictions': algo_accurate,
-                    'accuracy_rate': round(algo_accuracy, 2)
+                    'accuracy_rate': round(algo_accuracy, 2),
+                    'avg_confidence': round(avg_confidence, 2),
+                    'avg_accuracy_score': round(avg_accuracy_score, 2)
                 })
+            
+            # 最近预测效果分析（最近20条记录）
+            recent_predictions_queryset = all_predictions.order_by('-created_at')[:20]
+            recent_predictions_list = list(recent_predictions_queryset)
+            recent_stats = {
+                'total': len(recent_predictions_list),
+                'accurate': len([p for p in recent_predictions_list if p.is_accurate]),
+                'accuracy_rate': 0
+            }
+            if recent_stats['total'] > 0:
+                recent_stats['accuracy_rate'] = round(
+                    (recent_stats['accurate'] / recent_stats['total']) * 100, 2
+                )
+            
+            # 预测质量分布统计
+            quality_distribution = {
+                'excellent': all_predictions.filter(accuracy_score__gte=60).count(),  # 60分以上
+                'good': all_predictions.filter(accuracy_score__gte=40, accuracy_score__lt=60).count(),  # 40-59分
+                'fair': all_predictions.filter(accuracy_score__gte=20, accuracy_score__lt=40).count(),  # 20-39分
+                'poor': all_predictions.filter(accuracy_score__lt=20).count()  # 20分以下
+            }
             
             return Response({
                 'code': 200,
-                'message': '统计完成',
+                'message': '算法准确率统计完成',
                 'data': {
                     'overall': {
                         'total_predictions': total_predictions,
                         'accurate_predictions': accurate_predictions,
-                        'accuracy_rate': round(accuracy_rate, 2)
+                        'accuracy_rate': round(accuracy_rate, 2),
+                        'filter_applied': f'算法: {algorithm}' if algorithm else '所有算法'
                     },
                     'by_algorithm': algorithm_stats,
-                    'disclaimer': '⚠️ 预测准确率仅供学习参考，不代表未来预测能力！'
+                    'recent_performance': recent_stats,
+                    'quality_distribution': quality_distribution,
+                    'explanation': {
+                        'accuracy_criteria': '预测算作准确的标准：至少命中3个红球或命中蓝球',
+                        'accuracy_score': '准确率得分：红球每个2分，蓝球10分，满分22分',
+                        'confidence': '置信度：算法内部参数，不代表实际预测可信度'
+                    },
+                    'disclaimer': '⚠️ 预测准确率仅供学习参考，不代表未来预测能力！彩票开奖完全随机，请理性对待。'
                 }
             })
         except Exception as e:
@@ -877,6 +995,241 @@ class PredictionViewSet(viewsets.ModelViewSet):
                 'message': f'统计失败: {str(e)}',
                 'data': None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _generate_prediction_by_algorithm(self, algorithm):
+        """根据指定算法生成预测结果"""
+        import random
+        import numpy as np
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        from collections import Counter
+        
+        try:
+            if algorithm == 'frequency':
+                return self._frequency_prediction()
+            elif algorithm == 'trend':
+                return self._trend_prediction()
+            elif algorithm == 'regression':
+                return self._regression_prediction()
+            elif algorithm == 'ensemble':
+                return self._ensemble_prediction()
+            else:
+                # 默认使用频率算法
+                return self._frequency_prediction()
+        except Exception as e:
+            # 如果算法执行失败，返回随机结果
+            predicted_red = sorted(random.sample(range(1, 34), 6))
+            predicted_blue = random.randint(1, 16)
+            return predicted_red, predicted_blue, 0.05
+
+    def _frequency_prediction(self):
+        """频率统计预测算法"""
+        import random
+        
+        # 获取红球和蓝球的频率统计
+        red_stats = Statistics.objects.filter(ball_type='red').order_by('-appear_count')[:15]
+        blue_stats = Statistics.objects.filter(ball_type='blue').order_by('-appear_count')[:8]
+        
+        if red_stats.count() >= 6 and blue_stats.count() >= 1:
+            # 从高频号码中随机选择
+            predicted_red = sorted(random.sample([s.ball_number for s in red_stats], 6))
+            predicted_blue = random.choice([s.ball_number for s in blue_stats])
+            confidence = 15.0  # 娱乐性预测，置信度较低
+        else:
+            # 如果统计数据不足，使用随机数
+            predicted_red = sorted(random.sample(range(1, 34), 6))
+            predicted_blue = random.randint(1, 16)
+            confidence = 5.0
+        
+        return predicted_red, predicted_blue, confidence
+
+    def _trend_prediction(self):
+        """趋势分析预测算法"""
+        import random
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # 获取最近30期的开奖数据
+        recent_date = timezone.now() - timedelta(days=90)  # 约3个月
+        recent_results = LotteryResult.objects.filter(
+            draw_date__gte=recent_date
+        ).order_by('-draw_date')[:30]
+        
+        if recent_results.count() < 10:
+            # 数据不足，使用随机算法
+            predicted_red = sorted(random.sample(range(1, 34), 6))
+            predicted_blue = random.randint(1, 16)
+            return predicted_red, predicted_blue, 5.0
+        
+        # 分析最近趋势：统计每个号码最近的出现情况
+        red_trends = {}
+        blue_trends = {}
+        
+        for i, result in enumerate(recent_results):
+            # 越近期的数据权重越高
+            weight = 30 - i
+            
+            # 统计红球趋势
+            red_balls = result.get_red_balls()
+            for ball in red_balls:
+                if ball not in red_trends:
+                    red_trends[ball] = 0
+                red_trends[ball] += weight
+            
+            # 统计蓝球趋势
+            if result.blue_ball not in blue_trends:
+                blue_trends[result.blue_ball] = 0
+            blue_trends[result.blue_ball] += weight
+        
+        # 选择趋势较强的号码（但加入随机性）
+        try:
+            # 红球：选择趋势较强的号码，但加入随机性
+            red_candidates = sorted(red_trends.keys(), key=lambda x: red_trends[x], reverse=True)[:20]
+            if len(red_candidates) >= 6:
+                predicted_red = sorted(random.sample(red_candidates, 6))
+            else:
+                predicted_red = sorted(random.sample(range(1, 34), 6))
+            
+            # 蓝球：选择趋势较强的号码
+            blue_candidates = sorted(blue_trends.keys(), key=lambda x: blue_trends[x], reverse=True)[:8]
+            if blue_candidates:
+                predicted_blue = random.choice(blue_candidates)
+            else:
+                predicted_blue = random.randint(1, 16)
+            
+            confidence = 12.0  # 趋势分析置信度
+        except:
+            predicted_red = sorted(random.sample(range(1, 34), 6))
+            predicted_blue = random.randint(1, 16)
+            confidence = 5.0
+        
+        return predicted_red, predicted_blue, confidence
+
+    def _regression_prediction(self):
+        """线性回归预测算法"""
+        import random
+        import numpy as np
+        
+        try:
+            # 获取历史数据用于训练模型
+            recent_results = LotteryResult.objects.all().order_by('-draw_date')[:100]
+            
+            if recent_results.count() < 20:
+                # 数据不足，使用随机算法
+                predicted_red = sorted(random.sample(range(1, 34), 6))
+                predicted_blue = random.randint(1, 16)
+                return predicted_red, predicted_blue, 5.0
+            
+            # 准备训练数据
+            X = []  # 特征：期号数值化、日期特征等
+            y_red = []  # 目标：红球号码
+            y_blue = []  # 目标：蓝球号码
+            
+            for i, result in enumerate(recent_results):
+                # 特征工程：使用期号序列、周几、月份等作为特征
+                try:
+                    # 期号转数字（取最后几位数字）
+                    issue_num = int(''.join(filter(str.isdigit, result.issue))[-3:]) if result.issue else i
+                except:
+                    issue_num = i
+                
+                # 日期特征
+                weekday = result.draw_date.weekday() if result.draw_date else 0
+                month = result.draw_date.month if result.draw_date else 1
+                
+                features = [issue_num, weekday, month, i]  # i作为时间序列特征
+                X.append(features)
+                
+                # 目标变量
+                red_balls = result.get_red_balls()
+                y_red.append(red_balls)
+                y_blue.append(result.blue_ball)
+            
+            # 使用线性回归预测下一期的"趋势"
+            X = np.array(X)
+            
+            # 预测红球（使用红球平均值作为简化目标）
+            red_averages = [np.mean(balls) for balls in y_red]
+            
+            if len(X) > 5:
+                from sklearn.linear_model import LinearRegression
+                
+                # 训练红球预测模型
+                model_red = LinearRegression()
+                model_red.fit(X[:-1], red_averages[:-1])
+                
+                # 预测下一期
+                next_features = [X[-1][0] + 1, X[-1][1], X[-1][2], X[-1][3] + 1]
+                predicted_avg = model_red.predict([next_features])[0]
+                
+                # 基于预测的平均值生成号码（加入随机性）
+                center = max(10, min(25, int(predicted_avg)))
+                predicted_red = []
+                for _ in range(6):
+                    # 在预测中心附近选择号码
+                    ball = random.randint(max(1, center - 10), min(33, center + 10))
+                    while ball in predicted_red:
+                        ball = random.randint(1, 33)
+                    predicted_red.append(ball)
+                predicted_red = sorted(predicted_red)
+                
+                # 蓝球：基于历史平均值预测
+                blue_avg = np.mean(y_blue)
+                predicted_blue = max(1, min(16, int(blue_avg + random.randint(-3, 3))))
+                
+                confidence = 10.0  # 线性回归置信度
+            else:
+                predicted_red = sorted(random.sample(range(1, 34), 6))
+                predicted_blue = random.randint(1, 16)
+                confidence = 5.0
+                
+        except Exception as e:
+            # 回归计算失败，使用随机算法
+            predicted_red = sorted(random.sample(range(1, 34), 6))
+            predicted_blue = random.randint(1, 16)
+            confidence = 5.0
+        
+        return predicted_red, predicted_blue, confidence
+
+    def _ensemble_prediction(self):
+        """组合算法预测"""
+        import random
+        from collections import Counter
+        
+        try:
+            # 获取其他三种算法的预测结果
+            freq_red, freq_blue, freq_conf = self._frequency_prediction()
+            trend_red, trend_blue, trend_conf = self._trend_prediction()
+            reg_red, reg_blue, reg_conf = self._regression_prediction()
+            
+            # 红球组合：从三种算法的结果中选择
+            all_red_predictions = freq_red + trend_red + reg_red
+            red_counter = Counter(all_red_predictions)
+            
+            # 选择出现频率较高的号码，但保持随机性
+            popular_reds = [ball for ball, count in red_counter.most_common(15)]
+            if len(popular_reds) >= 6:
+                predicted_red = sorted(random.sample(popular_reds, 6))
+            else:
+                predicted_red = sorted(random.sample(range(1, 34), 6))
+            
+            # 蓝球组合：简单投票
+            blue_votes = [freq_blue, trend_blue, reg_blue]
+            blue_counter = Counter(blue_votes)
+            most_common_blue = blue_counter.most_common(1)
+            if most_common_blue:
+                predicted_blue = most_common_blue[0][0]
+            else:
+                predicted_blue = random.randint(1, 16)
+            
+            # 置信度：三种算法的加权平均
+            confidence = (freq_conf * 0.4 + trend_conf * 0.3 + reg_conf * 0.3)
+            
+        except Exception as e:
+            # 组合算法失败，使用频率算法
+            predicted_red, predicted_blue, confidence = self._frequency_prediction()
+        
+        return predicted_red, predicted_blue, confidence
 
 
 class UserAnalysisLogViewSet(viewsets.ModelViewSet):
@@ -1121,6 +1474,110 @@ class UserProfileView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class UserStatsView(APIView):
+    """用户学习统计API视图"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """获取用户学习统计信息"""
+        try:
+            user = request.user
+            
+            # 获取用户扩展资料
+            profile, created = UserProfile.objects.get_or_create(
+                user=user,
+                defaults={'user_type': 'normal'}
+            )
+            
+            # 计算统计数据
+            stats = self._calculate_user_stats(user, profile)
+            
+            return Response({
+                'code': 200,
+                'message': '获取成功',
+                'data': stats
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 500,
+                'message': f'服务器错误: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _calculate_user_stats(self, user, profile):
+        """计算用户统计数据"""
+        # 预测次数
+        prediction_count = Prediction.objects.filter(user=profile).count()
+        
+        # 分析次数 - 从用户分析日志中统计
+        analysis_count = UserAnalysisLog.objects.filter(user_profile=profile).count()
+        
+        # 登录天数 - 计算用户活跃天数
+        login_days = self._calculate_login_days(user)
+        
+        # 学习时长 - 基于分析日志计算
+        study_hours = self._calculate_study_hours(profile)
+        
+        # 预测准确率
+        accurate_predictions = Prediction.objects.filter(user=profile, is_accurate=True).count()
+        accuracy_rate = (accurate_predictions / prediction_count * 100) if prediction_count > 0 else 0
+        
+        # 最近活动
+        recent_predictions = Prediction.objects.filter(user=profile).order_by('-created_at')[:5]
+        recent_analysis = UserAnalysisLog.objects.filter(user_profile=profile).order_by('-created_at')[:5]
+        
+        return {
+            'basic_stats': [
+                {'key': 'predictions', 'icon': '🎮', 'label': '预测次数', 'value': str(prediction_count)},
+                {'key': 'analyses', 'icon': '📈', 'label': '分析次数', 'value': str(analysis_count)},
+                {'key': 'login_days', 'icon': '📅', 'label': '登录天数', 'value': str(login_days)},
+                {'key': 'study_time', 'icon': '⏰', 'label': '学习时长', 'value': f'{study_hours}小时'}
+            ],
+            'detailed_stats': {
+                'prediction_count': prediction_count,
+                'analysis_count': analysis_count,
+                'accuracy_rate': round(accuracy_rate, 2),
+                'login_days': login_days,
+                'study_hours': study_hours,
+                'join_date': user.date_joined.strftime('%Y-%m-%d'),
+                'last_login': user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '从未登录'
+            },
+            'recent_activity': {
+                'recent_predictions': [
+                    {
+                        'algorithm': p.algorithm,
+                        'created_at': p.created_at.strftime('%Y-%m-%d %H:%M'),
+                        'is_accurate': p.is_accurate
+                    } for p in recent_predictions
+                ],
+                'recent_analysis': [
+                    {
+                        'type': a.analysis_type,
+                        'created_at': a.created_at.strftime('%Y-%m-%d %H:%M')
+                    } for a in recent_analysis
+                ]
+            }
+        }
+    
+    def _calculate_login_days(self, user):
+        """计算用户登录天数"""
+        if not user.last_login:
+            return 1  # 新用户至少有1天
+        
+        # 简单实现：基于注册日期计算天数
+        days_since_join = (timezone.now().date() - user.date_joined.date()).days + 1
+        return min(days_since_join, 30)  # 最多显示30天，实际应该基于真实登录记录
+    
+    def _calculate_study_hours(self, profile):
+        """计算学习时长"""
+        # 简单实现：每次分析算0.5小时，每次预测算0.2小时
+        analysis_hours = UserAnalysisLog.objects.filter(user_profile=profile).count() * 0.5
+        prediction_hours = Prediction.objects.filter(user=profile).count() * 0.2
+        total_hours = analysis_hours + prediction_hours
+        return round(total_hours, 1)
+
+
 class ChangePasswordView(APIView):
     """修改密码API视图"""
     permission_classes = [IsAuthenticated]
@@ -1172,11 +1629,74 @@ class CurrentUserView(APIView):
     def get(self, request):
         """获取当前登录用户信息"""
         try:
+            # 确保用户有扩展资料
+            ensure_user_profile(request.user)
+            
             serializer = UserSerializer(request.user)
+            user_permissions = get_user_permissions(request.user)
+            
             return Response({
                 'code': 200,
                 'message': '获取成功',
-                'data': serializer.data
+                'data': {
+                    'user': serializer.data,
+                    'permissions': user_permissions
+                }
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 500,
+                'message': f'服务器错误: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserPermissionsView(APIView):
+    """用户权限信息API视图"""
+    permission_classes = [AllowAny]  # 允许匿名用户查询权限
+    
+    def get(self, request):
+        """获取当前用户权限信息"""
+        try:
+            user_permissions = get_user_permissions(request.user)
+            
+            return Response({
+                'code': 200,
+                'message': '获取成功',
+                'data': user_permissions
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 500,
+                'message': f'服务器错误: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AdminOnlyView(APIView):
+    """管理员专用API视图"""
+    permission_classes = [IsAdminUser]
+    
+    def get(self, request):
+        """管理员专用功能"""
+        try:
+            # 获取系统统计信息
+            stats = {
+                'total_users': User.objects.count(),
+                'normal_users': UserProfile.objects.filter(user_type='normal').count(),
+                'admin_users': UserProfile.objects.filter(user_type='admin').count(),
+                'total_predictions': Prediction.objects.count(),
+                'total_lottery_results': LotteryResult.objects.count(),
+                'active_data_sources': DataSource.objects.filter(is_enabled=True).count(),
+                'recent_crawl_logs': CrawlLog.objects.filter(created_at__gte=timezone.now() - timedelta(days=7)).count()
+            }
+            
+            return Response({
+                'code': 200,
+                'message': '管理员数据获取成功',
+                'data': stats
             })
             
         except Exception as e:
@@ -1195,7 +1715,7 @@ class DataSourceViewSet(viewsets.ModelViewSet):
     """数据源配置API视图集"""
     queryset = DataSource.objects.all()
     serializer_class = DataSourceSerializer
-    permission_classes = [AllowAny]  # 临时设为公开，后续需要管理员权限
+    permission_classes = [IsDataSourceManager]  # 只有管理员可以管理数据源
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['source_type', 'status', 'is_enabled']
     ordering_fields = ['priority', 'name', 'last_success_time', 'created_at']
@@ -1281,7 +1801,7 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 
 class CrawlerManagementView(APIView):
     """爬虫管理API视图"""
-    permission_classes = [AllowAny]  # 临时设为公开，后续需要管理员权限
+    permission_classes = [IsCrawlerManager]  # 只有管理员可以管理爬虫
 
     def post(self, request):
         """启动爬虫任务"""
@@ -1438,7 +1958,7 @@ class CrawlLogViewSet(viewsets.ReadOnlyModelViewSet):
     """爬虫执行记录API视图集（只读）"""
     queryset = CrawlLog.objects.all()
     serializer_class = CrawlLogSerializer
-    permission_classes = [AllowAny]  # 临时设为公开，后续需要管理员权限
+    permission_classes = [CanViewCrawlerLogs]  # 只有管理员可以查看爬虫日志
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'task_type', 'data_source']
     ordering_fields = ['created_at', 'start_time', 'end_time', 'duration_seconds']
@@ -1535,7 +2055,7 @@ class CrawlLogViewSet(viewsets.ReadOnlyModelViewSet):
 
 class DataSyncView(APIView):
     """数据同步API视图"""
-    permission_classes = [AllowAny]  # 临时设为公开，后续需要管理员权限
+    permission_classes = [IsCrawlerManager]  # 只有管理员可以进行数据同步
 
     def post(self, request):
         """数据同步操作"""
@@ -1746,3 +2266,128 @@ class DataSyncView(APIView):
             return 10  # 运行中但未处理记录
         else:
             return 0
+
+
+class UserFavoriteViewSet(viewsets.ModelViewSet):
+    """用户收藏API视图集"""
+    queryset = UserFavorite.objects.all()
+    serializer_class = UserFavoriteSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['favorite_type', 'is_public']
+    ordering_fields = ['created_at', 'view_count', 'title']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        """返回当前用户的收藏记录"""
+        if self.request.user.is_authenticated:
+            try:
+                user_profile = self.request.user.userprofile
+                return UserFavorite.objects.filter(user_profile=user_profile)
+            except UserProfile.DoesNotExist:
+                return UserFavorite.objects.none()
+        else:
+            return UserFavorite.objects.none()
+
+    def get_serializer_class(self):
+        """根据动作选择序列化器"""
+        if self.action in ['create', 'update', 'partial_update']:
+            return UserFavoriteCreateSerializer
+        return UserFavoriteSerializer
+
+    def perform_create(self, serializer):
+        """创建收藏时设置用户"""
+        # 获取或创建用户扩展资料
+        user_profile, created = UserProfile.objects.get_or_create(
+            user=self.request.user,
+            defaults={'user_type': 'normal'}
+        )
+        serializer.save(user_profile=user_profile)
+
+    @action(detail=True, methods=['post'])
+    def add_view(self, request, pk=None):
+        """增加收藏的查看次数"""
+        try:
+            favorite = self.get_object()
+            favorite.increment_view_count()
+            
+            return Response({
+                'code': 200,
+                'message': '查看次数已更新',
+                'data': {'view_count': favorite.view_count}
+            })
+        except Exception as e:
+            return Response({
+                'code': 500,
+                'message': f'服务器错误: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
+    def by_type(self, request):
+        """按类型获取收藏"""
+        try:
+            favorite_type = request.query_params.get('type')
+            if not favorite_type:
+                return Response({
+                    'code': 400,
+                    'message': '请提供收藏类型参数',
+                    'data': None
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            queryset = self.get_queryset().filter(favorite_type=favorite_type)
+            serializer = self.get_serializer(queryset, many=True)
+            
+            return Response({
+                'code': 200,
+                'message': '获取成功',
+                'data': serializer.data
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 500,
+                'message': f'服务器错误: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """获取收藏统计摘要"""
+        try:
+            queryset = self.get_queryset()
+            
+            summary = {
+                'total_count': queryset.count(),
+                'by_type': {},
+                'recent_favorites': []
+            }
+            
+            # 按类型统计
+            from django.db.models import Count
+            type_counts = queryset.values('favorite_type').annotate(count=Count('id'))
+            for item in type_counts:
+                favorite_type = item['favorite_type']
+                count = item['count']
+                summary['by_type'][favorite_type] = {
+                    'count': count,
+                    'display_name': dict(UserFavorite.FAVORITE_TYPE_CHOICES).get(favorite_type, favorite_type)
+                }
+            
+            # 最近收藏
+            recent_favorites = queryset.order_by('-created_at')[:5]
+            recent_serializer = self.get_serializer(recent_favorites, many=True)
+            summary['recent_favorites'] = recent_serializer.data
+            
+            return Response({
+                'code': 200,
+                'message': '获取成功',
+                'data': summary
+            })
+            
+        except Exception as e:
+            return Response({
+                'code': 500,
+                'message': f'服务器错误: {str(e)}',
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

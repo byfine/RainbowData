@@ -1,0 +1,49 @@
+Traceback (most recent call last):
+  File "E:\WorkSpaceE\BFWork\Others\LottoPrediction\rainbow-data\rainbow_data_backend\deep_analyze_c500.py", line 39, in deep_analyze_c500_page
+    print(f"  �ı�: {element.strip()}")
+UnicodeEncodeError: 'gbk' codec can't encode character '\xc9' in position 9: illegal multibyte sequence
+================================================================================
+500��Ʊ�����ҳ����� - Ѱ�������Ŀ������
+================================================================================
+
+1. �������������ںŵ�Ԫ��...
+�ҵ����������ںŵ�Ԫ��: 4
+
+Ԫ�� 1:
+  �ı�: 25062
+  ����ǩ: td
+  ����ǩclass: []
+  ����ǩid: 
+  �����ֵ�Ԫ��:
+    1. td: 6
+    2. td: 4
+    3. td: 11
+    4. td: 3
+    5. td: 7
+
+Ԫ�� 2:
+  �ı�: 25063
+  ����ǩ: td
+  ����ǩclass: []
+  ����ǩid: 
+  �����ֵ�Ԫ��:
+    1. td: 7
+    2. td: 2
+    3. td: 12
+    4. td: 4
+    5. td: 8
+
+Ԫ�� 3:
+  �ı�: 25064
+  ����ǩ: td
+  ����ǩclass: []
+  ����ǩid: 
+  �����ֵ�Ԫ��:
+    1. td: 8
+    2. td: 2
+    3. td: 13
+    4. td: 5
+    5. td: 9
+
+Ԫ�� 4:
+Analysis failed: 'gbk' codec can't encode character '\xc9' in position 9: illegal multibyte sequence

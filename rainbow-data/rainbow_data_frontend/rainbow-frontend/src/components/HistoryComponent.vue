@@ -71,14 +71,16 @@
       </template>
       
       <!-- 数据表格 -->
-      <el-table
+            <el-table
         :data="tableData"
         :loading="loading"
         stripe
         border
-        style="width: 100%"
+        style="width: 100%; table-layout: fixed;"
         :default-sort="{ prop: 'draw_date', order: 'descending' }"
         @sort-change="handleSortChange"
+        class="history-table"
+        ref="historyTable"
       >
         <el-table-column
           prop="issue"
@@ -86,6 +88,8 @@
           width="120"
           sortable
           align="center"
+          header-align="center"
+          :resizable="false"
         />
         
         <el-table-column
@@ -94,12 +98,16 @@
           width="120"
           sortable
           align="center"
+          header-align="center"
+          :resizable="false"
         />
         
         <el-table-column
           label="红球"
           width="300"
           align="center"
+          header-align="center"
+          :resizable="false"
         >
           <template #default="scope">
             <div class="balls-display">
@@ -119,6 +127,8 @@
           label="蓝球"
           width="80"
           align="center"
+          header-align="center"
+          :resizable="false"
         >
           <template #default="scope">
             <span class="ball blue-ball">
@@ -129,9 +139,10 @@
         
         <el-table-column
           label="操作"
-          width="120"
+          width="160"
           align="center"
-          fixed="right"
+          header-align="center"
+          :resizable="false"
         >
           <template #default="scope">
             <el-button
@@ -140,6 +151,14 @@
               @click="viewDetails(scope.row)"
             >
               详情
+            </el-button>
+            <el-button
+              size="small"
+              type="warning"
+              @click="addToFavorites(scope.row)"
+              :disabled="!isAuthenticated"
+            >
+              <el-icon><Star /></el-icon>
             </el-button>
           </template>
         </el-table-column>
@@ -218,9 +237,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Star } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 // API配置
@@ -231,6 +250,14 @@ const loading = ref(false)
 const tableData = ref([])
 const detailDialogVisible = ref(false)
 const selectedResult = ref(null)
+
+// 接收父组件传递的认证状态
+const props = defineProps({
+  isAuthenticated: {
+    type: Boolean,
+    default: false
+  }
+})
 
 // 查询表单
 const queryForm = reactive({
@@ -326,6 +353,9 @@ const loadData = async () => {
       }
       
       ElMessage.success(`加载成功，共 ${pagination.total} 条记录`)
+      
+      // 数据加载完成后修复表格布局
+      fixTableLayout()
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -381,9 +411,147 @@ const handleCloseDetail = () => {
   selectedResult.value = null
 }
 
+// 快捷收藏功能
+const addToFavorites = async (lotteryResult) => {
+  if (!props.isAuthenticated) {
+    ElMessage.warning('请先登录后再收藏')
+    return
+  }
+  
+  try {
+    // 先检查是否已经收藏过
+    const checkResponse = await axios.get(`${API_BASE_URL}/api/v1/favorites/`)
+    if (checkResponse.status === 200) {
+      const existingFavorites = checkResponse.data.results || checkResponse.data
+      const existingFavorite = existingFavorites.find(fav => 
+        fav.favorite_type === 'lottery_result' && fav.object_id === lotteryResult.id
+      )
+      
+      if (existingFavorite) {
+        ElMessage.warning(`期号 ${lotteryResult.issue} 已经收藏过了`)
+        return
+      }
+    }
+    
+    const submitData = {
+      favorite_type: 'lottery_result',
+      object_id: lotteryResult.id,
+      title: `期号 ${lotteryResult.issue} - ${lotteryResult.draw_date}`,
+      description: `红球: ${getRedBalls(lotteryResult).join(', ')} 蓝球: ${lotteryResult.blue_ball}`,
+      tags: ['开奖结果', lotteryResult.issue],
+      is_public: false
+    }
+    
+    const response = await axios.post(`${API_BASE_URL}/api/v1/favorites/`, submitData)
+    
+    // Django DRF创建成功返回201状态码
+    if (response.status === 201) {
+      ElMessage.success('收藏成功！')
+    } else {
+      ElMessage.error('收藏失败')
+    }
+    
+  } catch (error) {
+    console.error('收藏失败:', error)
+    
+    if (error.response) {
+      // 服务器返回了错误响应
+      const status = error.response.status
+      if (status === 401) {
+        ElMessage.error('请先登录后再收藏')
+      } else if (status === 400) {
+        // 显示验证错误信息
+        const errorData = error.response.data
+        if (errorData && typeof errorData === 'object') {
+          const errors = Object.values(errorData).flat()
+          ElMessage.error(`收藏失败: ${errors.join(', ')}`)
+        } else {
+          ElMessage.error('收藏数据格式错误')
+        }
+      } else if (status === 500) {
+        // 500错误通常是重复收藏导致的IntegrityError
+        ElMessage.warning('该开奖结果已经收藏过了')
+      } else {
+        ElMessage.error(`收藏失败 (${status})`)
+      }
+    } else if (error.request) {
+      // 网络错误
+      ElMessage.error('网络错误，请检查网络连接')
+    } else {
+      // 其他错误
+      ElMessage.error('收藏失败，请稍后重试')
+    }
+  }
+}
+
+// 表格布局修复方法（核心解决方案）
+const fixTableLayout = () => {
+  nextTick(() => {
+    setTimeout(() => {
+      const table = document.querySelector('.history-table')
+      if (table) {
+        // 强制设置表格为固定布局 - 这是核心解决方案
+        table.style.tableLayout = 'fixed'
+        table.style.width = '100%'
+        
+        // 设置表头和表体的布局
+        const headerTable = table.querySelector('.el-table__header table')
+        const bodyTable = table.querySelector('.el-table__body table')
+        
+        if (headerTable) {
+          headerTable.style.tableLayout = 'fixed'
+          headerTable.style.width = '100%'
+        }
+        
+        if (bodyTable) {
+          bodyTable.style.tableLayout = 'fixed'
+          bodyTable.style.width = '100%'
+        }
+        
+        // 设置列宽度 - 确保表头和表体列宽一致
+        const colWidths = ['120px', '120px', '300px', '80px', '160px']
+        
+        const headerCols = table.querySelectorAll('.el-table__header colgroup col')
+        headerCols.forEach((col, index) => {
+          if (colWidths[index]) {
+            col.style.width = colWidths[index]
+          }
+        })
+        
+        const bodyCols = table.querySelectorAll('.el-table__body colgroup col')
+        bodyCols.forEach((col, index) => {
+          if (colWidths[index]) {
+            col.style.width = colWidths[index]
+          }
+        })
+        
+        // 额外确保文字对齐
+        const headers = table.querySelectorAll('.el-table__header th')
+        headers.forEach(th => {
+          th.style.textAlign = 'center'
+          const cell = th.querySelector('.cell')
+          if (cell) {
+            cell.style.textAlign = 'center'
+          }
+        })
+        
+        const bodyTds = table.querySelectorAll('.el-table__body td')
+        bodyTds.forEach(td => {
+          td.style.textAlign = 'center'
+        })
+      }
+    }, 150)
+  })
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadData()
+  
+  // 挂载后修复表格布局
+  setTimeout(() => {
+    fixTableLayout()
+  }, 300)
 })
 </script>
 
@@ -524,34 +692,294 @@ onMounted(() => {
   font-size: 14px;
 }
 
+/* 表格固定布局样式 - 核心解决方案 */
+.history-table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.history-table :deep(.el-table__header),
+.history-table :deep(.el-table__body) {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.history-table :deep(.el-table__header table),
+.history-table :deep(.el-table__body table) {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* 确保列宽度一致 - 关键修复 */
+.history-table :deep(colgroup col:nth-child(1)) {
+  width: 120px !important;
+}
+
+.history-table :deep(colgroup col:nth-child(2)) {
+  width: 120px !important;
+}
+
+.history-table :deep(colgroup col:nth-child(3)) {
+  width: 300px !important;
+}
+
+.history-table :deep(colgroup col:nth-child(4)) {
+  width: 80px !important;
+}
+
+.history-table :deep(colgroup col:nth-child(5)) {
+  width: 160px !important;
+}
+
+/* 文字居中和内边距 */
+.history-table :deep(.el-table__header th) {
+  text-align: center !important;
+  padding: 12px 0 !important;
+}
+
+.history-table :deep(.el-table__header th .cell) {
+  text-align: center !important;
+}
+
+.history-table :deep(.el-table__body td) {
+  text-align: center !important;
+  padding: 12px 0 !important;
+}
+
 /* 响应式设计 */
-@media (max-width: 768px) {
+/* 平板端适配 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
   .page-title {
-    font-size: 24px;
+    font-size: 26px;
   }
   
   .title-icon {
-    font-size: 28px;
+    font-size: 30px;
+  }
+  
+  .filter-form {
+    gap: 15px;
   }
   
   .balls-display {
-    gap: 3px;
+    gap: 4px;
   }
   
   .ball {
-    width: 24px;
-    height: 24px;
-    font-size: 10px;
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  
+  .header-actions {
+    gap: 8px;
+  }
+  
+  .header-actions .el-button {
+    padding: 8px 16px;
+  }
+  
+  .detail-item .ball {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+  }
+}
+
+/* 移动端适配 (< 768px) */
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 20px;
+    text-align: center;
+  }
+  
+  .title-icon {
+    font-size: 24px;
+  }
+  
+  .page-description {
+    font-size: 14px;
+    text-align: center;
+  }
+  
+  .filter-form {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filter-form .el-form-item {
+    margin-bottom: 15px;
+  }
+  
+  .filter-form .el-button {
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  .header-actions {
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  
+  .header-actions .el-button {
+    flex: 1;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+  
+  .balls-display {
+    gap: 2px;
+    justify-content: center;
+  }
+  
+  .balls-container {
+    gap: 2px;
+    justify-content: center;
+  }
+  
+  .ball {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+  
+  .pagination-container {
+    margin-top: 15px;
+    padding: 15px 0;
+  }
+  
+  .empty-data {
+    padding: 30px 15px;
+  }
+  
+  .detail-content {
+    padding: 5px 0;
   }
   
   .detail-item {
     flex-direction: column;
     align-items: flex-start;
+    margin-bottom: 12px;
+    font-size: 14px;
   }
   
   .detail-item label {
     width: auto;
     margin-bottom: 5px;
+    font-size: 13px;
   }
+  
+  .detail-item .ball {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  
+  .detail-item .balls-container {
+    margin-left: 0;
+    margin-top: 5px;
+  }
+}
+
+/* 小屏移动端适配 (< 480px) */
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 18px;
+  }
+  
+  .title-icon {
+    font-size: 20px;
+  }
+  
+  .page-description {
+    font-size: 12px;
+  }
+  
+  .filter-form .el-form-item {
+    margin-bottom: 12px;
+  }
+  
+  .header-actions .el-button {
+    font-size: 11px;
+    padding: 5px 6px;
+  }
+  
+  .ball {
+    width: 18px;
+    height: 18px;
+    font-size: 8px;
+  }
+  
+  .balls-display {
+    gap: 1px;
+  }
+  
+  .balls-container {
+    gap: 1px;
+  }
+  
+  .empty-data {
+    padding: 25px 10px;
+  }
+  
+  .detail-item {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .detail-item label {
+    font-size: 11px;
+  }
+  
+  .detail-item .ball {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+  
+  .pagination-container {
+    margin-top: 10px;
+    padding: 10px 0;
+  }
+}
+</style>
+
+<style>
+/* 全局表格布局修复 - 确保在所有情况下生效 */
+.history-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.history-table .el-table__header,
+.history-table .el-table__body {
+  width: 100% !important;
+}
+
+.history-table .el-table__header table,
+.history-table .el-table__body table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+/* 关键：强制列宽一致 */
+.history-table colgroup col:nth-child(1) { width: 120px !important; }
+.history-table colgroup col:nth-child(2) { width: 120px !important; }
+.history-table colgroup col:nth-child(3) { width: 300px !important; }
+.history-table colgroup col:nth-child(4) { width: 80px !important; }
+.history-table colgroup col:nth-child(5) { width: 160px !important; }
+
+/* 文字居中 */
+.history-table .el-table__header th {
+  text-align: center !important;
+}
+
+.history-table .el-table__header th .cell {
+  text-align: center !important;
+}
+
+.history-table .el-table__body td {
+  text-align: center !important;
 }
 </style> 
